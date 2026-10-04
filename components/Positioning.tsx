@@ -6,7 +6,8 @@ export function Positioning() {
     <Section id="why-clubmates">
       <div className="grid gap-10 lg:grid-cols-2 lg:gap-20">
         <Reveal>
-          <h2 className="text-4xl leading-[1.05] font-medium tracking-[-0.04em] sm:text-5xl lg:text-6xl">
+          <p className="text-sm font-medium tracking-[0.18em] text-aubergine uppercase">Why Clubmates</p>
+          <h2 className="mt-4 text-4xl leading-[1.05] font-medium tracking-[-0.04em] sm:text-5xl lg:text-6xl">
             Not another dating app.
           </h2>
         </Reveal>

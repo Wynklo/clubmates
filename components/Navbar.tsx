@@ -81,10 +81,7 @@ export function Navbar() {
           ))}
         </nav>
 
-        <div className="hidden items-center gap-2 lg:flex">
-          <Link href="/login" className={buttonClasses("quiet")}>
-            Sign In
-          </Link>
+        <div className="hidden items-center lg:flex">
           <button type="button" className={buttonClasses("primary")} onClick={open}>
             Get Early Access
           </button>
@@ -137,19 +134,12 @@ export function Navbar() {
                   <Link
                     key={link.href}
                     href={link.href}
-                    className="border-b border-ink/10 py-5 text-3xl font-medium tracking-tight"
+                    className="border-b border-ink/10 py-5 font-serif text-3xl font-medium tracking-tight"
                     onClick={() => setMenuPath(null)}
                   >
                     {link.label}
                   </Link>
                 ))}
-                <Link
-                  href="/login"
-                  className="border-b border-ink/10 py-5 text-3xl font-medium tracking-tight"
-                  onClick={() => setMenuPath(null)}
-                >
-                  Sign In
-                </Link>
               </nav>
               <button
                 type="button"

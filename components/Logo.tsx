@@ -1,5 +1,5 @@
 import Image from "next/image";
-import logo from "@/assets/clubmateslogo.png";
+import logo from "@/assets/clubmates-mark.png";
 
 type LogoProps = {
   className?: string;

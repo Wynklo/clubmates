@@ -52,16 +52,19 @@ export function Hero() {
         </motion.div>
 
         <motion.div
-          className="hidden border-l border-ink/10 pl-10 lg:block"
+          className="hidden border-t border-ink/15 pt-8 lg:block"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8, delay: 0.25 }}
         >
-          <p className="text-sm tracking-[0.2em] text-stone uppercase">The night</p>
-          <ol className="mt-8 space-y-6">
+          <p className="text-sm font-medium tracking-[0.18em] text-aubergine uppercase">The night</p>
+          <ol className="mt-6">
             {["Discover", "Connect", "Go Out"].map((step, index) => (
-              <li key={step} className="flex items-baseline justify-between gap-6">
-                <span className="text-4xl font-medium tracking-tight">{step}</span>
+              <li
+                key={step}
+                className="flex items-baseline justify-between gap-6 border-b border-ink/10 py-5"
+              >
+                <span className="font-serif text-3xl font-medium tracking-tight">{step}</span>
                 <span className="text-sm text-mute">0{index + 1}</span>
               </li>
             ))}

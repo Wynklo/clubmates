@@ -20,7 +20,7 @@ export function Security({ title = "h2" }: { title?: "h1" | "h2" }) {
           Privacy comes before the night out.
         </Title>
       </Reveal>
-      <ul className="mt-12 max-w-3xl space-y-5">
+      <ul className="mt-12 grid gap-x-12 md:grid-cols-2">
         {practices.map((practice, index) => (
           <Reveal key={practice} delay={index * 0.04}>
             <li className="border-t border-ink/10 pt-5 text-base leading-7 text-stone">{practice}</li>

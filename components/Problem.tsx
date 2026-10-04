@@ -5,7 +5,8 @@ export function Problem() {
   return (
     <Section className="bg-ink text-paper">
       <Reveal>
-        <h2 className="max-w-4xl text-4xl leading-[1.05] font-medium tracking-[-0.04em] sm:text-5xl lg:text-6xl">
+        <p className="text-sm font-medium tracking-[0.18em] text-blush uppercase">The gap</p>
+        <h2 className="mt-4 max-w-4xl text-4xl leading-[1.05] font-medium tracking-[-0.04em] text-paper sm:text-5xl lg:text-6xl">
           Great nights shouldn&apos;t depend on who&apos;s available.
         </h2>
         <p className="mt-8 max-w-2xl text-lg leading-8 text-blush">

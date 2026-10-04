@@ -17,6 +17,10 @@ const lora = Lora({
   display: "swap",
 });
 
+export const viewport = {
+  themeColor: "#FFFEFD",
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://clubmates.in"),
   title: {

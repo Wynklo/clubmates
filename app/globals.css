@@ -41,6 +41,7 @@ h1,
 h2,
 h3 {
   font-family: var(--font-lora), ui-serif, Georgia, "Times New Roman", serif;
+  text-wrap: balance;
 }
 
 ::selection {

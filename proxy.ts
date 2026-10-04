@@ -2,18 +2,32 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 
+const pausedAuthPaths = ["/login", "/signup", "/forgot-password", "/auth/callback"];
+
+function isPausedAuthPath(path: string) {
+  return (
+    pausedAuthPaths.includes(path) ||
+    path === "/account" ||
+    path.startsWith("/account/")
+  );
+}
+
+function redirectHome(request: NextRequest) {
+  const url = request.nextUrl.clone();
+  url.pathname = "/";
+  url.search = "";
+  return NextResponse.redirect(url);
+}
+
 export async function proxy(request: NextRequest) {
   const env = getSupabaseEnv();
   const path = request.nextUrl.pathname;
-  const isAccount = path === "/account" || path.startsWith("/account/");
+
+  if (isPausedAuthPath(path)) {
+    return redirectHome(request);
+  }
 
   if (!env) {
-    if (isAccount) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/login";
-      url.search = "";
-      return NextResponse.redirect(url);
-    }
     return NextResponse.next();
   }
 
@@ -39,28 +53,10 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  let signedIn = false;
-
   try {
-    const { data } = await supabase.auth.getClaims();
-    signedIn = Boolean(data?.claims?.sub);
+    await supabase.auth.getClaims();
   } catch {
-    signedIn = false;
-  }
-
-  if (!signedIn && isAccount) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.search = "";
-    const redirectResponse = NextResponse.redirect(url);
-    supabaseResponse.cookies.getAll().forEach((cookie) => {
-      redirectResponse.cookies.set(cookie);
-    });
-    for (const header of ["cache-control", "expires", "pragma"]) {
-      const value = supabaseResponse.headers.get(header);
-      if (value) redirectResponse.headers.set(header, value);
-    }
-    return redirectResponse;
+    // Session refresh is best-effort while sign-in is paused.
   }
 
   return supabaseResponse;
