@@ -1,0 +1,55 @@
+@media (prefers-reduced-motion: no-preference) {
+  .shown .line {
+    animation: ea-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .cta:hover {
+    transform: translateY(-1px);
+  }
+}
+
+.cta {
+  transition:
+    background-color 200ms ease,
+    color 200ms ease,
+    transform 200ms ease;
+}
+
+.spark {
+  animation: spark 300ms ease-out forwards;
+}
+
+@keyframes spark {
+  0% {
+    opacity: 0;
+  }
+
+  35% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes ea-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .line,
+  .cta,
+  .spark {
+    animation: none;
+    transform: none;
+  }
+}

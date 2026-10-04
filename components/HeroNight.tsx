@@ -11,7 +11,7 @@ type Person = {
   shirt: string;
 };
 
-const maya: Person = { name: "Maya", skin: "#E7B89A", hair: "#2A211C", shirt: "#67295F" };
+const maya: Person = { name: "Maya", skin: "#E7B89A", hair: "#2A211C", shirt: "#994EA8" };
 const arjun: Person = { name: "Arjun", skin: "#C68642", hair: "#1A1A1A", shirt: "#5C3D32" };
 const nia: Person = { name: "Nia", skin: "#8D5524", hair: "#24160F", shirt: "#097270" };
 const dev: Person = { name: "Dev", skin: "#E0B090", hair: "#3A2418", shirt: "#484848" };
@@ -50,7 +50,7 @@ function Status({
         {person.name}, {age}
       </p>
       <p className="mt-0.5 text-xs leading-4 text-stone">{line}</p>
-      <p className="mt-2 inline-flex rounded-full bg-[#f4e8ef] px-2.5 py-1 text-[10px] font-medium tracking-wide text-aubergine">
+      <p className="mt-2 inline-flex rounded-full bg-[#f3e6f8] px-2.5 py-1 text-[10px] font-medium tracking-wide text-aubergine">
         Club · Dancing · 10 PM
       </p>
     </div>

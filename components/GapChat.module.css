@@ -1,0 +1,185 @@
+.beat {
+  opacity: 0;
+  animation-duration: 14s;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+.clock {
+  animation-name: gap-clock;
+}
+
+.maya {
+  animation-name: gap-maya;
+}
+
+.sam {
+  animation-name: gap-sam;
+}
+
+.arjun {
+  animation-name: gap-arjun;
+}
+
+.reply {
+  animation-name: gap-reply;
+}
+
+.typing {
+  animation-name: gap-typing;
+}
+
+.close {
+  animation-name: gap-close;
+}
+
+@keyframes gap-clock {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  2.9%,
+  93% {
+    opacity: 1;
+    transform: none;
+  }
+
+  100% {
+    opacity: 0;
+    transform: none;
+  }
+}
+
+@keyframes gap-maya {
+  0%,
+  5.7% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  8.6%,
+  93% {
+    opacity: 1;
+    transform: none;
+  }
+
+  100% {
+    opacity: 0;
+    transform: none;
+  }
+}
+
+@keyframes gap-sam {
+  0%,
+  14.3% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  17.1%,
+  93% {
+    opacity: 1;
+    transform: none;
+  }
+
+  100% {
+    opacity: 0;
+    transform: none;
+  }
+}
+
+@keyframes gap-arjun {
+  0%,
+  23.6% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  26.4%,
+  93% {
+    opacity: 1;
+    transform: none;
+  }
+
+  100% {
+    opacity: 0;
+    transform: none;
+  }
+}
+
+@keyframes gap-reply {
+  0%,
+  33.6% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  36.4%,
+  93% {
+    opacity: 1;
+    transform: none;
+  }
+
+  100% {
+    opacity: 0;
+    transform: none;
+  }
+}
+
+@keyframes gap-typing {
+  0%,
+  40.7% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  43.2%,
+  49.3% {
+    opacity: 1;
+    transform: none;
+  }
+
+  51.1%,
+  100% {
+    opacity: 0;
+    transform: none;
+  }
+}
+
+@keyframes gap-close {
+  0%,
+  59.3% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  62.5%,
+  93% {
+    opacity: 1;
+    transform: none;
+  }
+
+  100% {
+    opacity: 0;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .clock,
+  .maya,
+  .sam,
+  .arjun,
+  .reply,
+  .typing,
+  .close {
+    animation: none;
+    opacity: 0;
+    transform: none;
+  }
+
+  .close {
+    opacity: 1;
+  }
+}

@@ -6,10 +6,10 @@
   --color-stone: #484848;
   --color-mist: #484848;
   --color-mute: #a3a3a3;
-  --color-aubergine: #67295f;
-  --color-magenta: #67295f;
-  --color-violet: #67295f;
-  --color-blush: #d9c9d7;
+  --color-aubergine: #994ea8;
+  --color-magenta: #994ea8;
+  --color-violet: #994ea8;
+  --color-blush: #ead4f0;
   --color-sand: #ccac9f;
   --color-coral: #d45847;
   --color-pink: #d45847;
@@ -45,12 +45,12 @@ h3 {
 }
 
 ::selection {
-  background: #d9c9d7;
+  background: #ead4f0;
   color: #1a1a1a;
 }
 
 :focus-visible {
-  outline: 2px solid #67295f;
+  outline: 2px solid #994ea8;
   outline-offset: 3px;
 }
 
@@ -78,4 +78,20 @@ section[id] {
 
 .hero-glow {
   background: #fffefd;
+}
+
+.avatar-hover {
+  transition: transform 200ms ease;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .avatar-hover:hover {
+    transform: scale(1.02);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .avatar-hover {
+    transition: none;
+  }
 }

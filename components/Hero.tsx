@@ -8,7 +8,7 @@ import { useEarlyAccess } from "@/components/EarlyAccessProvider";
 import { buttonClasses } from "@/components/ui/button";
 
 const faces = [
-  { name: "Maya", skin: "#E7B89A", hair: "#2A211C", shirt: "#67295F" },
+  { name: "Maya", skin: "#E7B89A", hair: "#2A211C", shirt: "#994EA8" },
   { name: "Arun", skin: "#C68642", hair: "#1A1A1A", shirt: "#097270" },
   { name: "Leah", skin: "#F1C7A6", hair: "#6B3A2A", shirt: "#D45847" },
   { name: "Noah", skin: "#8D5524", hair: "#24160F", shirt: "#75457D" },

@@ -21,7 +21,7 @@ type EarlyAccessResponse =
   | { ok: true }
   | { ok: false; code: "duplicate"; message: string }
   | { ok: false; code: "validation"; fieldErrors?: Record<string, string> }
-  | { ok: false; code: "error"; message?: string };
+  | { ok: false; code: "error" | "rate_limited"; message?: string };
 
 const emptyValues: EarlyAccessInput = {
   fullName: "",

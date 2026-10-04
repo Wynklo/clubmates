@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import { EarlyAccessSection } from "@/components/EarlyAccessSection";
 import { Hero } from "@/components/Hero";
 import { HowItWorks } from "@/components/HowItWorks";
+import { Idea } from "@/components/Idea";
 import { Positioning } from "@/components/Positioning";
 import { Problem } from "@/components/Problem";
-import { Safety } from "@/components/Safety";
-import { Security } from "@/components/Security";
+import { Trust } from "@/components/Trust";
 
 export const metadata: Metadata = {
   alternates: {
@@ -20,8 +20,8 @@ export default function HomePage() {
       <Problem />
       <HowItWorks />
       <Positioning />
-      <Safety />
-      <Security />
+      <Idea />
+      <Trust />
       <EarlyAccessSection />
     </>
   );

@@ -18,7 +18,7 @@
   width: 15rem;
   height: 15rem;
   border-radius: 999px;
-  background: #67295f;
+  background: #994ea8;
   filter: blur(52px);
   opacity: 0;
   pointer-events: none;
@@ -104,7 +104,7 @@
   z-index: 3;
   width: 16rem;
   height: 16rem;
-  border: 1px solid #67295f;
+  border: 1px solid #994ea8;
   border-radius: 999px;
   opacity: 0;
   pointer-events: none;

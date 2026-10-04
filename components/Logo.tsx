@@ -15,10 +15,9 @@ export function Logo({ className = "", onDark = false, priority = false }: LogoP
         alt=""
         priority={priority}
         sizes="72px"
-        className="h-10 w-auto"
-        style={{ width: "auto", height: "2.5rem" }}
+        className="h-7 w-auto sm:h-10"
       />
-      <span className="text-[1.2rem] font-extrabold tracking-[-0.05em] lowercase">
+      <span className="text-[0.95rem] font-extrabold tracking-[-0.05em] lowercase sm:text-[1.2rem]">
         club<span className={onDark ? "text-blush" : "text-aubergine"}>mates</span>
       </span>
     </span>

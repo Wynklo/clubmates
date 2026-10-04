@@ -1,0 +1,25 @@
+@media (prefers-reduced-motion: no-preference) {
+  .shown .stage {
+    animation: hiw-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+}
+
+@keyframes hiw-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
