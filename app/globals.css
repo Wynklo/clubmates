@@ -1,0 +1,75 @@
+@import "tailwindcss";
+
+@theme {
+  --color-paper: #fffefd;
+  --color-ink: #1a1a1a;
+  --color-stone: #484848;
+  --color-mist: #484848;
+  --color-mute: #a3a3a3;
+  --color-aubergine: #67295f;
+  --color-magenta: #67295f;
+  --color-violet: #67295f;
+  --color-blush: #d9c9d7;
+  --color-sand: #ccac9f;
+  --color-coral: #d45847;
+  --color-pink: #d45847;
+  --color-error: #9e3328;
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+  background: #fffefd;
+  color-scheme: light;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+body {
+  background: #fffefd;
+  color: #1a1a1a;
+  font-family: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: #d9c9d7;
+  color: #1a1a1a;
+}
+
+:focus-visible {
+  outline: 2px solid #67295f;
+  outline-offset: 3px;
+}
+
+section[id] {
+  scroll-margin-top: 5.5rem;
+}
+
+.skip-link {
+  position: absolute;
+  left: 1rem;
+  top: 1rem;
+  z-index: 70;
+  transform: translateY(-200%);
+  border-radius: 999px;
+  background: #1a1a1a;
+  color: #fffefd;
+  padding: 0.7rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.skip-link:focus {
+  transform: none;
+}
+
+.hero-glow {
+  background:
+    radial-gradient(ellipse 70% 55% at 100% 0%, rgba(217, 201, 215, 0.95), transparent 68%),
+    radial-gradient(ellipse 42% 40% at 0% 100%, rgba(204, 172, 159, 0.45), transparent 70%);
+}
