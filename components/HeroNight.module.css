@@ -1,0 +1,536 @@
+.stage {
+  --loop: 10.5s;
+  pointer-events: none;
+}
+
+.beat {
+  animation-duration: var(--loop);
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  animation-fill-mode: both;
+}
+
+.glow {
+  position: absolute;
+  top: 46%;
+  left: 50%;
+  z-index: 0;
+  width: 15rem;
+  height: 15rem;
+  border-radius: 999px;
+  background: #67295f;
+  filter: blur(52px);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  animation-name: glow;
+}
+
+.maya,
+.arjun {
+  position: absolute;
+  top: 0;
+  z-index: 2;
+  width: 9.4rem;
+  opacity: 0;
+}
+
+.maya {
+  left: 0.25rem;
+  animation-name: maya;
+}
+
+.arjun {
+  right: 0.25rem;
+  animation-name: arjun;
+}
+
+.cluster {
+  position: absolute;
+  top: 38%;
+  right: 0;
+  left: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.kicker,
+.vibe,
+.way,
+.confirm {
+  opacity: 0;
+}
+
+.kicker {
+  animation-name: kicker;
+}
+
+.vibe {
+  animation-name: vibe;
+}
+
+.way {
+  animation-name: way;
+}
+
+.confirmMaya {
+  animation-name: confirmMaya;
+}
+
+.confirmArjun {
+  animation-name: confirmArjun;
+}
+
+.plan,
+.meet,
+.night {
+  position: absolute;
+  top: 48%;
+  left: 50%;
+  z-index: 4;
+  opacity: 0;
+}
+
+.plan {
+  animation-name: plan;
+}
+
+.pulse {
+  position: absolute;
+  top: 48%;
+  left: 50%;
+  z-index: 3;
+  width: 16rem;
+  height: 16rem;
+  border: 1px solid #67295f;
+  border-radius: 999px;
+  opacity: 0;
+  pointer-events: none;
+  animation-name: pulse;
+}
+
+.meet {
+  z-index: 5;
+  display: flex;
+  width: max-content;
+  max-width: calc(100% - 1rem);
+  flex-direction: column;
+  align-items: center;
+  animation-name: meet;
+}
+
+.meetRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2.2rem;
+  animation-name: meetRow;
+}
+
+.meetTime {
+  opacity: 0;
+  animation-name: meetTime;
+}
+
+.meetGo {
+  opacity: 0;
+  animation-name: meetGo;
+}
+
+.night {
+  z-index: 6;
+  display: flex;
+  width: 15.5rem;
+  flex-direction: column;
+  align-items: center;
+  animation-name: night;
+}
+
+.tagline {
+  opacity: 0;
+  animation-name: tagline;
+}
+
+.join {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: auto;
+  animation-name: join;
+}
+
+@keyframes glow {
+  0%,
+  13% {
+    opacity: 0;
+  }
+  24%,
+  40% {
+    opacity: 0.07;
+  }
+  48%,
+  68% {
+    opacity: 0.1;
+  }
+  78%,
+  93% {
+    opacity: 0.14;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes maya {
+  0%,
+  2% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  6%,
+  14% {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+  26%,
+  39% {
+    opacity: 1;
+    transform: translate(14px, 16px);
+  }
+  45%,
+  100% {
+    opacity: 0;
+    transform: translate(22px, 28px);
+  }
+}
+
+@keyframes arjun {
+  0%,
+  4% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  9%,
+  14% {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+  26%,
+  39% {
+    opacity: 1;
+    transform: translate(-14px, 16px);
+  }
+  45%,
+  100% {
+    opacity: 0;
+    transform: translate(-22px, 28px);
+  }
+}
+
+@keyframes kicker {
+  0%,
+  14% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  18%,
+  39% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  45%,
+  100% {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes vibe {
+  0%,
+  18% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  22%,
+  39% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  45%,
+  100% {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes way {
+  0%,
+  22% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  27%,
+  39% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  42% {
+    opacity: 1;
+    transform: scale(1.01);
+  }
+  45%,
+  100% {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.99);
+  }
+}
+
+@keyframes confirmMaya {
+  0%,
+  29% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  33%,
+  39% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  45%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes confirmArjun {
+  0%,
+  34% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  38%,
+  40% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  46%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes plan {
+  0%,
+  41% {
+    opacity: 0;
+    transform: translate(-50%, -42%) scale(0.985);
+  }
+  46% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.01);
+  }
+  49%,
+  54% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  60%,
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -54%) scale(0.99);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  42% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.92);
+  }
+  46% {
+    opacity: 0.35;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  52%,
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.12);
+  }
+}
+
+@keyframes meet {
+  0%,
+  53% {
+    opacity: 0;
+    transform: translate(-50%, -46%);
+  }
+  58%,
+  70% {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+  76%,
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -54%);
+  }
+}
+
+@keyframes meetRow {
+  0%,
+  57% {
+    gap: 2.2rem;
+  }
+  66%,
+  100% {
+    gap: 0.75rem;
+  }
+}
+
+@keyframes meetTime {
+  0%,
+  60% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  65%,
+  72% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  77%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes meetGo {
+  0%,
+  65% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  69%,
+  72% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  77%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes night {
+  0%,
+  68% {
+    opacity: 0;
+    transform: translate(-50%, -42%) scale(0.985);
+  }
+  74% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.01);
+  }
+  78%,
+  94% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -48%) scale(1);
+  }
+}
+
+@keyframes tagline {
+  0%,
+  76% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  81%,
+  94% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes join {
+  0%,
+  76% {
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(4px);
+  }
+  77% {
+    visibility: visible;
+  }
+  80%,
+  94% {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+@media (max-width: 1023px) {
+  .maya,
+  .arjun {
+    width: 8.4rem;
+  }
+
+  .cluster {
+    top: 37%;
+  }
+
+  .plan,
+  .meet,
+  .night,
+  .pulse {
+    top: 54%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .beat {
+    animation: none;
+  }
+
+  .glow,
+  .maya,
+  .arjun,
+  .kicker,
+  .vibe,
+  .way,
+  .confirm,
+  .plan,
+  .pulse,
+  .meet,
+  .meetTime,
+  .meetGo,
+  .meetRow {
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  .night,
+  .tagline,
+  .join {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, -50%);
+  }
+
+  .tagline,
+  .join {
+    transform: none;
+  }
+}

@@ -7,7 +7,7 @@ export function buttonClasses(
 
   const variants = {
     primary: "h-12 bg-ink px-6 text-paper hover:bg-black",
-    secondary: "h-12 border border-ink bg-transparent px-6 text-ink hover:bg-ink hover:text-paper",
+    secondary: "h-12 border border-ink bg-transparent px-6 text-ink hover:border-aubergine hover:text-aubergine",
     quiet: "h-12 px-3 text-stone hover:text-ink",
   };
 

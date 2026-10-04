@@ -1,13 +1,19 @@
 import { Reveal } from "@/components/Reveal";
 import { Section } from "@/components/Section";
 
-const practices = [
-  "Information you submit is sent over an encrypted connection and stored in a managed cloud database that encrypts data at rest.",
-  "Account passwords are handled by our authentication provider. Clubmates does not keep its own copy of your password.",
-  "The public website uses a limited key. Privileged database credentials are not included in the pages sent to your browser.",
-  "Joining early access does not publish a profile, share your plans, or track your location.",
-  "Forms are checked on the server, and raw database errors are never shown back to you.",
-  "Access to the project is limited to what is needed to run this website.",
+const points = [
+  {
+    title: "Encrypted",
+    body: "What you submit travels over an encrypted connection and is stored in a database that encrypts data at rest.",
+  },
+  {
+    title: "Limited access",
+    body: "The site uses a public key only. Privileged database credentials never reach your browser.",
+  },
+  {
+    title: "Nothing public",
+    body: "Early access does not publish a profile, share your plans, or track your location.",
+  },
 ];
 
 export function Security({ title = "h2" }: { title?: "h1" | "h2" }) {
@@ -19,33 +25,25 @@ export function Security({ title = "h2" }: { title?: "h1" | "h2" }) {
         <Title className="mt-4 max-w-3xl text-4xl leading-[1.05] font-medium tracking-[-0.04em] sm:text-5xl">
           Privacy comes before the night out.
         </Title>
+        <p className="mt-6 max-w-2xl text-lg leading-8 text-stone">
+          What this website does with the details you share.
+        </p>
       </Reveal>
-      <ul className="mt-12 grid gap-x-12 md:grid-cols-2">
-        {practices.map((practice, index) => (
-          <Reveal key={practice} delay={index * 0.04}>
-            <li className="border-t border-ink/10 pt-5 text-base leading-7 text-stone">{practice}</li>
+      <div className="mt-14 grid gap-6 md:grid-cols-3">
+        {points.map((point, index) => (
+          <Reveal key={point.title} delay={index * 0.08}>
+            <article className="h-full border-t-2 border-ink pt-6">
+              <h3 className="text-3xl font-medium tracking-tight">{point.title}</h3>
+              <p className="mt-4 max-w-xs text-base leading-7 text-stone">{point.body}</p>
+            </article>
           </Reveal>
         ))}
-      </ul>
-      <div className="mt-16 grid gap-12 lg:grid-cols-2">
-        <Reveal>
-          <h3 className="text-2xl font-medium tracking-tight">What we will not pretend</h3>
-          <p className="mt-4 text-base leading-7 text-stone">
-            Clubmates does not hold independent security certifications, and we do not run a public
-            bug-bounty program. We will not say those things until they are true. Messaging, reporting,
-            and blocking are not available yet. They will be part of the product before anyone is asked
-            to meet through it.
-          </p>
-        </Reveal>
-        <Reveal delay={0.08}>
-          <h3 className="text-2xl font-medium tracking-tight">If something looks wrong</h3>
-          <p className="mt-4 text-base leading-7 text-stone">
-            Tell us through the early access form and describe what you saw. Please do not run
-            denial-of-service tests or automated scans against this site. Questions about an account
-            belong with the email on that account.
-          </p>
-        </Reveal>
       </div>
+      <p className="mt-14 max-w-2xl border-l-2 border-aubergine pl-4 text-sm leading-6 text-stone">
+        Clubmates does not hold security certifications or run a bug bounty. Messaging, reporting, and
+        blocking are not live yet. If something looks wrong, tell us through the early access form.
+        Please do not scan or load-test this site.
+      </p>
     </Section>
   );
 }
