@@ -6,6 +6,12 @@ export const EARLY_ACCESS_DUPLICATE_MESSAGE =
 export const EARLY_ACCESS_ERROR_MESSAGE =
   "Something went wrong. Please try again.";
 
+export const EARLY_ACCESS_RATE_LIMIT_MESSAGE =
+  "Too many attempts from this network. Please wait a little while and try again.";
+
+export const EARLY_ACCESS_CLOSED_MESSAGE =
+  "Early access is full for now. We'll open more spots soon.";
+
 const NAME_MESSAGE = "Please enter your name.";
 const CITY_MESSAGE = "Please enter your city.";
 const EMAIL_MESSAGE = "Enter a valid email address.";

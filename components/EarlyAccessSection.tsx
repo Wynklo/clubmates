@@ -10,7 +10,7 @@ import { buttonClasses } from "@/components/ui/button";
 import styles from "./EarlyAccessSection.module.css";
 
 const pool: Person[] = [nia, dev, sam, lee, leah, maya, arjun];
-const pauses = [2800, 3400, 2600, 3700];
+const pauses = [6200, 7400, 6800, 8200];
 const ease = [0.22, 1, 0.36, 1] as const;
 
 type Face = { id: number; person: Person };
@@ -95,7 +95,7 @@ function Community() {
         setArrivedId(id);
         if (countRef.current < limitRef.current) {
           setTuck(true);
-          later(() => setTuck(false), 450);
+          later(() => setTuck(false), 700);
         }
         setFaces((current) => {
           const next = [...current, { id, person }];
@@ -103,9 +103,9 @@ function Community() {
           countRef.current = trimmed.length;
           return trimmed;
         });
-        later(() => setSparkId(id), 460);
-        later(() => setSparkId((current) => (current === id ? null : current)), 760);
-        later(() => setBadge(null), 880);
+        later(() => setSparkId(id), 640);
+        later(() => setSparkId((current) => (current === id ? null : current)), 1400);
+        later(() => setBadge(null), 1600);
         later(join, pauses[joins.current % pauses.length]);
       };
 
@@ -137,10 +137,10 @@ function Community() {
             <motion.span
               key={badge}
               aria-hidden="true"
-              initial={{ opacity: 0, y: 0 }}
-              animate={{ opacity: 1, y: -5 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.28, ease: "easeOut" }}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: -2 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.45, ease: "easeOut" }}
               className="pointer-events-none absolute top-0 right-0 text-[11px] leading-none font-medium tracking-wide text-aubergine"
             >
               {badge === "joining" ? "joining..." : "+1"}
@@ -153,12 +153,14 @@ function Community() {
               <motion.span
                 key={face.id}
                 layout
-                initial={{ opacity: 0, scale: 0.88, x: 10 }}
-                animate={{ opacity: 1, scale: 1, x: tuck && face.id !== arrivedId ? -6 : 0 }}
-                exit={{ opacity: 0, x: -8, scale: 0.94 }}
-                transition={{ duration: 0.45, ease }}
+                initial={{ opacity: 0, scale: 0.82, x: 22 }}
+                animate={{ opacity: 1, scale: 1, x: tuck && face.id !== arrivedId ? -8 : 0 }}
+                exit={{ opacity: 0, x: -18, scale: 0.9 }}
+                transition={{ duration: 0.8, ease }}
                 whileHover={canHover ? { y: -2, scale: 1.04 } : undefined}
-                className="relative -ml-2 inline-flex first:ml-0"
+                className={`relative -ml-2 inline-flex rounded-full first:ml-0 ${
+                  arrivedId === face.id ? styles.arrive : ""
+                }`}
               >
                 <span className="inline-flex size-[3.125rem] overflow-hidden rounded-full ring-2 ring-paper">
                   <Avatar person={face.person} />

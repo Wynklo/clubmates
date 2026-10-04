@@ -6,8 +6,10 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { buttonClasses } from "@/components/ui/button";
 import { describedBy, Field, inputClassName } from "@/components/ui/field";
 import {
+  EARLY_ACCESS_CLOSED_MESSAGE,
   EARLY_ACCESS_DUPLICATE_MESSAGE,
   EARLY_ACCESS_ERROR_MESSAGE,
+  EARLY_ACCESS_RATE_LIMIT_MESSAGE,
   earlyAccessSchema,
   type EarlyAccessInput,
 } from "@/lib/validation/earlyAccess";
@@ -21,7 +23,7 @@ type EarlyAccessResponse =
   | { ok: true }
   | { ok: false; code: "duplicate"; message: string }
   | { ok: false; code: "validation"; fieldErrors?: Record<string, string> }
-  | { ok: false; code: "error" | "rate_limited"; message?: string };
+  | { ok: false; code: "error" | "rate_limited" | "closed"; message?: string };
 
 const emptyValues: EarlyAccessInput = {
   fullName: "",
@@ -46,6 +48,8 @@ export function EarlyAccessForm({ idPrefix, onBack, onSuccess }: EarlyAccessForm
   const [serverFieldErrors, setServerFieldErrors] = useState<Record<string, string>>({});
   const [banner, setBanner] = useState<Banner>(null);
   const [status, setStatus] = useState<Status>("idle");
+  const [closed, setClosed] = useState(false);
+  const [honeypot, setHoneypot] = useState("");
   const submittingRef = useRef(false);
   const successRef = useRef<HTMLHeadingElement>(null);
   const onSuccessRef = useRef(onSuccess);
@@ -53,6 +57,19 @@ export function EarlyAccessForm({ idPrefix, onBack, onSuccess }: EarlyAccessForm
   useEffect(() => {
     onSuccessRef.current = onSuccess;
   }, [onSuccess]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/early-access", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((payload: { open?: boolean } | null) => {
+        if (!cancelled && payload && payload.open === false) setClosed(true);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (status !== "success") return;
@@ -97,7 +114,7 @@ export function EarlyAccessForm({ idPrefix, onBack, onSuccess }: EarlyAccessForm
       const response = await fetch("/api/early-access", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
+        body: JSON.stringify({ ...values, cm_hp: honeypot }),
         cache: "no-store",
       });
 
@@ -113,6 +130,10 @@ export function EarlyAccessForm({ idPrefix, onBack, onSuccess }: EarlyAccessForm
         setBanner({ tone: "duplicate", message: payload.message || EARLY_ACCESS_DUPLICATE_MESSAGE });
       } else if (payload && !payload.ok && payload.code === "validation" && payload.fieldErrors) {
         setServerFieldErrors(payload.fieldErrors);
+      } else if (payload && !payload.ok && payload.code === "rate_limited") {
+        setBanner({ tone: "error", message: payload.message || EARLY_ACCESS_RATE_LIMIT_MESSAGE });
+      } else if (payload && !payload.ok && payload.code === "closed") {
+        setClosed(true);
       } else {
         setBanner({ tone: "error", message: EARLY_ACCESS_ERROR_MESSAGE });
       }
@@ -124,6 +145,14 @@ export function EarlyAccessForm({ idPrefix, onBack, onSuccess }: EarlyAccessForm
     } finally {
       if (!succeeded) submittingRef.current = false;
     }
+  }
+
+  if (closed) {
+    return (
+      <p role="status" className="text-base leading-7 text-stone">
+        {EARLY_ACCESS_CLOSED_MESSAGE}
+      </p>
+    );
   }
 
   if (status === "success") {
@@ -175,7 +204,19 @@ export function EarlyAccessForm({ idPrefix, onBack, onSuccess }: EarlyAccessForm
   const ageId = `${idPrefix}-age`;
 
   return (
-    <form className="space-y-5" onSubmit={onSubmit} noValidate aria-busy={submitting}>
+    <form className="relative space-y-5" onSubmit={onSubmit} noValidate aria-busy={submitting}>
+      <div aria-hidden="true" className="absolute -left-[9999px] h-px w-px overflow-hidden">
+        <label htmlFor={`${idPrefix}-hp`}>Fax</label>
+        <input
+          id={`${idPrefix}-hp`}
+          name="cm_hp"
+          type="text"
+          tabIndex={-1}
+          autoComplete="off"
+          value={honeypot}
+          onChange={(event) => setHoneypot(event.target.value)}
+        />
+      </div>
       {banner ? (
         <p
           role={banner.tone === "error" ? "alert" : "status"}
