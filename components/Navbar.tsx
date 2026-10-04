@@ -66,7 +66,7 @@ export function Navbar() {
     >
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-5 sm:px-8 lg:h-[4.5rem]">
         <Link href="/" className="rounded-md text-ink" aria-label="Clubmates home">
-          <Logo />
+          <Logo priority />
         </Link>
 
         <nav className="hidden items-center gap-8 lg:flex" aria-label="Primary">

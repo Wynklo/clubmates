@@ -14,7 +14,8 @@
   --color-coral: #d45847;
   --color-pink: #d45847;
   --color-error: #9e3328;
-  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-lora), ui-serif, Georgia, "Times New Roman", serif;
 }
 
 html {
@@ -32,8 +33,14 @@ html {
 body {
   background: #fffefd;
   color: #1a1a1a;
-  font-family: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-lora), ui-serif, Georgia, "Times New Roman", serif;
 }
 
 ::selection {

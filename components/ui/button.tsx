@@ -6,8 +6,8 @@ export function buttonClasses(
     "inline-flex cursor-pointer items-center justify-center rounded-full text-sm font-semibold tracking-tight transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-60";
 
   const variants = {
-    primary: "h-12 bg-aubergine px-6 text-paper hover:bg-[#8d5f87]",
-    secondary: "h-12 border border-ink/20 bg-transparent px-6 text-ink hover:border-ink/50",
+    primary: "h-12 bg-ink px-6 text-paper hover:bg-black",
+    secondary: "h-12 border border-ink bg-transparent px-6 text-ink hover:bg-ink hover:text-paper",
     quiet: "h-12 px-3 text-stone hover:text-ink",
   };
 

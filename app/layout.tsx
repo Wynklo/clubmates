@@ -1,13 +1,19 @@
 import type { Metadata } from "next";
-import { Manrope } from "next/font/google";
+import { Inter, Lora } from "next/font/google";
 import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
 import { Providers } from "@/components/Providers";
 import "./globals.css";
 
-const manrope = Manrope({
+const inter = Inter({
   subsets: ["latin"],
-  variable: "--font-manrope",
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const lora = Lora({
+  subsets: ["latin"],
+  variable: "--font-lora",
   display: "swap",
 });
 
@@ -39,7 +45,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${manrope.variable} h-full antialiased`} data-scroll-behavior="smooth">
+    <html
+      lang="en"
+      className={`${inter.variable} ${lora.variable} h-full antialiased`}
+      data-scroll-behavior="smooth"
+    >
       <body className="min-h-full overflow-x-clip bg-paper font-sans text-ink">
         <Providers>
           <a className="skip-link" href="#main">
