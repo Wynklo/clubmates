@@ -1,3 +1,4 @@
+import type { PoolClient } from "pg";
 import { getPool } from "@/lib/db/postgres";
 import { isDuplicateRegistration, type EarlyAccessData } from "@/lib/validation/earlyAccess";
 
@@ -21,8 +22,9 @@ export async function registerEarlyAccess(
   const pool = getPool();
   if (!pool) return { ok: false, code: "error" };
 
-  const client = await pool.connect();
+  let client: PoolClient | undefined;
   try {
+    client = await pool.connect();
     await client.query("begin");
     await client.query(LOCK_SQL);
 
@@ -43,7 +45,7 @@ export async function registerEarlyAccess(
     await client.query("commit");
     return { ok: true };
   } catch (error) {
-    await client.query("rollback").catch(() => undefined);
+    await client?.query("rollback").catch(() => undefined);
     if (isDuplicateRegistration(error as { code?: string; message?: string })) {
       return { ok: false, code: "duplicate" };
     }
@@ -51,6 +53,6 @@ export async function registerEarlyAccess(
     console.error("early-access insert failed", code);
     return { ok: false, code: "error" };
   } finally {
-    client.release();
+    client?.release();
   }
 }
