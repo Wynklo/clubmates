@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { EarlyAccessForm } from "@/components/EarlyAccessForm";
+import { pageMetadata } from "@/lib/site";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Early access",
-  description: "Join the Clubmates early access list. No account required.",
-  alternates: { canonical: "https://clubmates.in/early-access" },
-};
+  description:
+    "Join the Clubmates early access list and hear when nights start coming together in your city. No account or password. You must be 18 or older.",
+  path: "/early-access",
+});
 
 export default function EarlyAccessPage() {
   return (

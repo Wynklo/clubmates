@@ -33,7 +33,7 @@ export function Security({ title = "h2" }: { title?: "h1" | "h2" }) {
         {points.map((point, index) => (
           <Reveal key={point.title} delay={index * 0.08}>
             <article className="h-full border-t-2 border-ink pt-6">
-              <h3 className="text-3xl font-medium tracking-tight">{point.title}</h3>
+              <h2 className="text-3xl font-medium tracking-tight">{point.title}</h2>
               <p className="mt-4 max-w-xs text-base leading-7 text-stone">{point.body}</p>
             </article>
           </Reveal>

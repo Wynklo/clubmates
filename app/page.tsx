@@ -6,12 +6,12 @@ import { Idea } from "@/components/Idea";
 import { Positioning } from "@/components/Positioning";
 import { Problem } from "@/components/Problem";
 import { Trust } from "@/components/Trust";
+import { defaultDescription, pageMetadata } from "@/lib/site";
 
-export const metadata: Metadata = {
-  alternates: {
-    canonical: "https://clubmates.in",
-  },
-};
+export const metadata: Metadata = pageMetadata({
+  description: defaultDescription,
+  path: "/",
+});
 
 export default function HomePage() {
   return (

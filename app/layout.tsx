@@ -3,6 +3,8 @@ import { Inter, Lora } from "next/font/google";
 import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
 import { Providers } from "@/components/Providers";
+import { SiteJsonLd } from "@/components/SiteJsonLd";
+import { defaultDescription, defaultTitle, siteName, siteUrl } from "@/lib/site";
 import "./globals.css";
 
 const inter = Inter({
@@ -21,30 +23,33 @@ export const viewport = {
   themeColor: "#FFFEFD",
 };
 
+const googleVerification = process.env.GOOGLE_SITE_VERIFICATION?.trim();
+
 export const metadata: Metadata = {
-  metadataBase: new URL("https://clubmates.in"),
+  metadataBase: new URL(siteUrl),
   title: {
-    default: "Clubmates | Find Your People. Own the Night.",
-    template: "%s | Clubmates",
+    default: defaultTitle,
+    template: `%s | ${siteName}`,
   },
-  description:
-    "Find people heading out, make plans together and experience nightlife with Clubmates.",
-  applicationName: "Clubmates",
+  description: defaultDescription,
+  applicationName: siteName,
+  authors: [{ name: siteName, url: siteUrl }],
+  creator: siteName,
+  robots: { index: true, follow: true },
   openGraph: {
-    title: "Clubmates | Find Your People. Own the Night.",
-    description:
-      "Find people heading out, make plans together and experience nightlife with Clubmates.",
-    url: "https://clubmates.in",
-    siteName: "Clubmates",
+    title: defaultTitle,
+    description: defaultDescription,
+    url: siteUrl,
+    siteName,
     locale: "en_IN",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Clubmates | Find Your People. Own the Night.",
-    description:
-      "Find people heading out, make plans together and experience nightlife with Clubmates.",
+    title: defaultTitle,
+    description: defaultDescription,
   },
+  ...(googleVerification ? { verification: { google: googleVerification } } : {}),
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -55,6 +60,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       data-scroll-behavior="smooth"
     >
       <body className="min-h-full overflow-x-clip bg-paper font-sans text-ink">
+        <SiteJsonLd />
         <Providers>
           <a className="skip-link" href="#main">
             Skip to content
