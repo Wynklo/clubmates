@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../club_icon.dart';
 import '../mock_model.dart';
@@ -54,76 +55,43 @@ class _SplashScreenState extends State<SplashScreen>
   Widget build(BuildContext context) {
     final club = CurvedAnimation(
       parent: _controller,
-      curve: const Cubic(0.2, 0.85, 0.25, 1.15),
+      curve: Curves.easeOut,
     );
     final fade = CurvedAnimation(
       parent: _controller,
       curve: const Interval(0.75, 1, curve: Curves.ease),
     );
-    return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                AnimatedBuilder(
-                  animation: club,
-                  builder: (context, child) => Opacity(
-                    opacity: club.value.clamp(0, 1),
-                    child: Transform.translate(
-                      offset: Offset(-18 * (1 - club.value), 0),
-                      child: child,
-                    ),
-                  ),
-                  child: Text(
-                    'club',
-                    style: ClubType.inter(
-                      43,
-                      weight: FontWeight.w600,
-                      height: 1,
-                      letterSpacing: 43 * -0.055,
-                    ),
-                  ),
-                ),
-                AnimatedBuilder(
-                  animation: club,
-                  builder: (context, child) => Opacity(
-                    opacity: club.value.clamp(0, 1),
-                    child: Transform.translate(
-                      offset: Offset(18 * (1 - club.value), 0),
-                      child: child,
-                    ),
-                  ),
-                  child: Text(
-                    'mates',
-                    style: ClubType.inter(
-                      43,
-                      weight: FontWeight.w600,
-                      height: 1,
-                      letterSpacing: 43 * -0.055,
-                      color: ClubColors.brand,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            FadeTransition(
-              opacity: fade,
-              child: Text(
-                'NIGHTLIFE, TOGETHER',
-                style: ClubType.inter(
-                  10,
-                  weight: FontWeight.w600,
-                  height: 1,
-                  letterSpacing: 2.2,
-                  color: ClubColors.ink,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light,
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FadeTransition(
+                opacity: club,
+                child: Image.asset(
+                  'assets/photos/clubmateslogo.png',
+                  width: 240,
+                  fit: BoxFit.contain,
                 ),
               ),
-            ),
-          ],
+              FadeTransition(
+                opacity: fade,
+                child: Text(
+                  'NIGHTLIFE, TOGETHER',
+                  style: ClubType.inter(
+                    10,
+                    weight: FontWeight.w600,
+                    height: 1,
+                    letterSpacing: 2.2,
+                    color: ClubColors.paper,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
