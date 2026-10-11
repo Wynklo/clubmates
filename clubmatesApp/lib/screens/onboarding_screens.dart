@@ -41,7 +41,7 @@ class _SplashScreenState extends State<SplashScreen>
     _timer = Timer(const Duration(milliseconds: 1700), () {
       if (!mounted) return;
       final model = MockScope.read(context);
-      if (model.route == AppRoute.splash) model.go(AppRoute.phone);
+      if (model.route == AppRoute.splash) model.start();
     });
   }
 
@@ -124,12 +124,13 @@ class _PhoneScreenState extends State<PhoneScreen> {
     return OnboardingFrame(
       title: "What's your number?",
       supporting: "We'll text you a code.",
+      error: model.errorMessage,
       onBack: () => model.go(AppRoute.splash),
       footer: PrimaryButton(
         'Continue',
-        onPressed: model.phone.length == 10
-            ? () => model.go(AppRoute.otp)
-            : null,
+        onPressed: model.busy || model.phone.length != 10
+            ? null
+            : () => model.sendCode(),
       ),
       children: [
         PhoneField(controller: _controller, onChanged: model.setPhone),
@@ -152,6 +153,7 @@ class OtpScreen extends StatelessWidget {
     return OnboardingFrame(
       title: 'Enter the code',
       supporting: 'Sent to $sentTo',
+      error: model.errorMessage,
       onBack: () => model.go(AppRoute.phone),
       headerAction: TextLink(
         'Edit',
@@ -160,7 +162,9 @@ class OtpScreen extends StatelessWidget {
       ),
       footer: PrimaryButton(
         'Verify',
-        onPressed: model.otp.join().length == 6 ? model.verifyOtp : null,
+        onPressed: model.busy || model.otp.join().length != 6
+            ? null
+            : model.verifyOtp,
       ),
       children: [
         OtpInput(values: model.otp, onChanged: model.setOtp),
@@ -172,10 +176,7 @@ class OtpScreen extends StatelessWidget {
           ),
         ],
         const SizedBox(height: 4),
-        const Align(
-          alignment: Alignment.centerLeft,
-          child: TextLink('Resend code'),
-        ),
+        const Align(alignment: Alignment.centerLeft, child: _ResendCode()),
       ],
     );
   }
@@ -209,13 +210,14 @@ class _NameScreenState extends State<NameScreen> {
     return OnboardingFrame(
       title: 'Your name',
       supporting: 'What should people call you?',
+      error: model.errorMessage,
       progress: 1,
       onBack: () => model.go(AppRoute.otp),
       footer: PrimaryButton(
         'Continue',
-        onPressed: model.name.trim().isEmpty
+        onPressed: model.busy || model.name.trim().isEmpty
             ? null
-            : () => model.go(AppRoute.dob),
+            : model.saveName,
       ),
       children: [
         ClubField(
@@ -228,8 +230,34 @@ class _NameScreenState extends State<NameScreen> {
   }
 }
 
-class DobScreen extends StatelessWidget {
+class DobScreen extends StatefulWidget {
   const DobScreen({super.key});
+
+  @override
+  State<DobScreen> createState() => _DobScreenState();
+}
+
+class _DobScreenState extends State<DobScreen> {
+  late final TextEditingController _day;
+  late final TextEditingController _month;
+  late final TextEditingController _year;
+
+  @override
+  void initState() {
+    super.initState();
+    final model = MockScope.read(context);
+    _day = TextEditingController(text: model.day);
+    _month = TextEditingController(text: model.month);
+    _year = TextEditingController(text: model.year);
+  }
+
+  @override
+  void dispose() {
+    _day.dispose();
+    _month.dispose();
+    _year.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -237,30 +265,43 @@ class DobScreen extends StatelessWidget {
     return OnboardingFrame(
       title: 'When were you born?',
       supporting: 'You need to be 18 or older.',
+      error: model.errorMessage,
       progress: 2,
       onBack: () => model.go(AppRoute.name),
       footer: PrimaryButton(
         'Continue',
-        onPressed: () => model.go(AppRoute.location),
+        onPressed: model.busy || !model.dobReady ? null : model.saveDob,
       ),
       children: [
-        const Row(
+        Row(
           children: [
             Expanded(
               flex: 7,
-              child: ClubField(hint: 'DD', keyboardType: TextInputType.number),
+              child: ClubField(
+                hint: 'DD',
+                controller: _day,
+                keyboardType: TextInputType.number,
+                onChanged: (value) => model.setDobPart(nextDay: value),
+              ),
             ),
-            SizedBox(width: 10),
+            const SizedBox(width: 10),
             Expanded(
               flex: 7,
-              child: ClubField(hint: 'MM', keyboardType: TextInputType.number),
+              child: ClubField(
+                hint: 'MM',
+                controller: _month,
+                keyboardType: TextInputType.number,
+                onChanged: (value) => model.setDobPart(nextMonth: value),
+              ),
             ),
-            SizedBox(width: 10),
+            const SizedBox(width: 10),
             Expanded(
               flex: 13,
               child: ClubField(
                 hint: 'YYYY',
+                controller: _year,
                 keyboardType: TextInputType.number,
+                onChanged: (value) => model.setDobPart(nextYear: value),
               ),
             ),
           ],
@@ -300,11 +341,12 @@ class _LocationScreenState extends State<LocationScreen> {
     return OnboardingFrame(
       title: 'Where are you?',
       supporting: "We'll show you people heading out nearby.",
+      error: model.errorMessage,
       progress: 3,
       onBack: () => model.go(AppRoute.dob),
       footer: PrimaryButton(
         'Continue',
-        onPressed: () => model.go(AppRoute.nightlife),
+        onPressed: model.busy ? null : model.saveCity,
       ),
       children: [
         ClubField(
@@ -376,19 +418,39 @@ class NightlifeScreen extends StatelessWidget {
   }
 }
 
-class AboutScreen extends StatelessWidget {
+class AboutScreen extends StatefulWidget {
   const AboutScreen({super.key});
+
+  @override
+  State<AboutScreen> createState() => _AboutScreenState();
+}
+
+class _AboutScreenState extends State<AboutScreen> {
+  late final TextEditingController _height;
+
+  @override
+  void initState() {
+    super.initState();
+    _height = TextEditingController(text: MockScope.read(context).height);
+  }
+
+  @override
+  void dispose() {
+    _height.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final model = MockScope.watch(context);
     return OnboardingFrame(
       title: 'A bit about you',
+      error: model.errorMessage,
       progress: 5,
       onBack: () => model.go(AppRoute.nightlife),
       footer: PrimaryButton(
         'Continue',
-        onPressed: () => model.go(AppRoute.photos),
+        onPressed: model.busy ? null : model.saveAbout,
       ),
       children: [
         const Eyebrow('Sex'),
@@ -406,7 +468,12 @@ class AboutScreen extends StatelessWidget {
         const SizedBox(height: 20),
         const Eyebrow('Height'),
         const SizedBox(height: 12),
-        const ClubField(hint: '172 cm', keyboardType: TextInputType.number),
+        ClubField(
+          hint: '172 cm',
+          controller: _height,
+          keyboardType: TextInputType.number,
+          onChanged: model.setHeight,
+        ),
       ],
     );
   }
@@ -421,25 +488,44 @@ class PhotosScreen extends StatelessWidget {
     return OnboardingFrame(
       title: 'Add your photos',
       supporting: 'Your first photo is the one people see.',
+      error: model.errorMessage,
       progress: 6,
       onBack: () => model.go(AppRoute.about),
       footer: PrimaryButton(
         'Continue',
-        onPressed: () => model.go(AppRoute.identity),
+        onPressed: model.busy || (model.live && model.ownPhotos.isEmpty)
+            ? null
+            : () => model.go(AppRoute.identity),
       ),
       children: [
         const PhotoGrid(),
         const SizedBox(height: 8),
-        const Row(
+        Row(
           children: [
-            Expanded(child: SecondaryButton('Camera', icon: 'camera')),
-            SizedBox(width: 8),
-            Expanded(child: SecondaryButton('Upload', icon: 'plus')),
+            Expanded(
+              child: SecondaryButton(
+                'Camera',
+                icon: 'camera',
+                onPressed: model.busy
+                    ? null
+                    : () => model.pickPhoto(camera: true),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: SecondaryButton(
+                'Upload',
+                icon: 'plus',
+                onPressed: model.busy
+                    ? null
+                    : () => model.pickPhoto(camera: false),
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 12),
         const Note(
-          'Use clear photos where people can see you. Hold and drag to reorder.',
+          'Use clear photos where people can see you. New photos stay pending until Clubmates approves them.',
         ),
       ],
     );
@@ -459,7 +545,7 @@ class IdentityScreen extends StatelessWidget {
       onBack: () => model.go(AppRoute.photos),
       footer: PrimaryButton(
         'Continue',
-        onPressed: model.uploaded ? () => model.go(AppRoute.face) : null,
+        onPressed: () => model.go(AppRoute.face),
       ),
       children: [
         for (final type in ['Aadhaar', 'PAN']) ...[
@@ -476,7 +562,7 @@ class IdentityScreen extends StatelessWidget {
           child: Material(
             type: MaterialType.transparency,
             child: InkWell(
-              onTap: model.markUploaded,
+              onTap: model.live ? null : model.markUploaded,
               borderRadius: BorderRadius.circular(24),
               child: SizedBox(
                 height: 104,
@@ -507,7 +593,7 @@ class IdentityScreen extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         const Note(
-          'Your identity document is encrypted and used only for verification. It is never shown on your profile.',
+          'Identity documents are not collected in this version. A verified badge is added by Clubmates, not from this screen.',
         ),
       ],
     );
@@ -620,7 +706,7 @@ class FaceScreen extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                const ProfilePhoto(ownPhoto),
+                ProfilePhoto(model.avatar.isEmpty ? ownPhoto : model.avatar),
                 const ColoredBox(color: Color(0x14000000)),
                 Positioned(
                   top: 70,
@@ -668,26 +754,42 @@ class VerifiedScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final model = MockScope.watch(context);
     return CenteredScreen(
       children: [
         const SuccessMark(),
         Text(
-          "You're verified",
+          model.isVerified ? "You're verified" : "You're in",
           textAlign: TextAlign.center,
           style: ClubType.lora(32),
         ),
         const SizedBox(height: 10),
         Text(
-          'Your profile is now verified.',
+          model.isVerified
+              ? 'Your profile is now verified.'
+              : 'Your profile is ready. A verified badge appears only after Clubmates confirms it.',
           textAlign: TextAlign.center,
           style: ClubType.inter(15, color: ClubColors.muted),
         ),
         const SizedBox(height: 32),
         PrimaryButton(
           'See people',
-          onPressed: () => MockScope.read(context).go(AppRoute.club),
+          onPressed: model.busy ? null : model.enterApp,
         ),
       ],
+    );
+  }
+}
+
+class _ResendCode extends StatelessWidget {
+  const _ResendCode();
+
+  @override
+  Widget build(BuildContext context) {
+    final model = MockScope.watch(context);
+    return TextLink(
+      'Resend code',
+      onPressed: model.busy ? null : () => model.sendCode(resend: true),
     );
   }
 }

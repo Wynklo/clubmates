@@ -12,7 +12,7 @@ class ClubScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final model = MockScope.watch(context);
-    if (model.profiles > 1) {
+    if (model.clubPerson == null) {
       return MainShell(
         child: Padding(
           padding: EdgeInsets.only(bottom: ClubChrome.clearance(context)),
@@ -28,6 +28,9 @@ class ClubScreen extends StatelessWidget {
     }
 
     final person = model.clubPerson;
+    if (person == null) {
+      return const SizedBox.shrink();
+    }
     return MainShell(
       child: ListView(
         padding: EdgeInsets.only(bottom: ClubChrome.clearance(context)),
@@ -36,10 +39,18 @@ class ClubScreen extends StatelessWidget {
             padding: EdgeInsets.fromLTRB(20, 12, 20, 8),
             child: Center(child: Wordmark()),
           ),
+          if (model.errorMessage != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+              child: Text(
+                model.errorMessage!,
+                style: ClubType.inter(13, color: ClubColors.error),
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: GestureDetector(
-              onTap: () => model.go(AppRoute.details),
+              onTap: () => model.openPerson(person, AppRoute.details),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(28),
                 child: SizedBox(
@@ -75,6 +86,7 @@ class ClubScreen extends StatelessWidget {
                                     child: PlaceLine(
                                       person.location,
                                       onDark: true,
+                                      verified: person.verified,
                                     ),
                                   ),
                                   const SizedBox(width: 8),
@@ -122,7 +134,7 @@ class ClubScreen extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: ActionBar(
               onPass: model.passClub,
-              onInvite: () => model.go(AppRoute.inviteSent),
+              onInvite: model.inviteClub,
             ),
           ),
         ],

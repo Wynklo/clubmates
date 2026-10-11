@@ -17,26 +17,33 @@ class LikesScreen extends StatelessWidget {
         padding: EdgeInsets.only(bottom: ClubChrome.clearance(context)),
         children: [
           const PageHeading(title: 'People who want to go out with you'),
-          if (model.showLikes)
-            _PersonRow(
-              person: aria,
-              onOpen: () => model.go(AppRoute.inviteDetail),
-              actions: Row(
-                children: [
-                  _SmallAction(
-                    'Pass',
-                    filled: false,
-                    onPressed: model.passInvite,
-                  ),
-                  const SizedBox(width: 8),
-                  _SmallAction(
-                    'Accept',
-                    filled: true,
-                    onPressed: model.acceptInvite,
-                  ),
-                ],
-              ),
-            )
+          if (model.incoming.isNotEmpty)
+            for (final person in model.incoming)
+              _PersonRow(
+                person: person,
+                onOpen: () => model.openPerson(person, AppRoute.inviteDetail),
+                actions: Row(
+                  children: [
+                    _SmallAction(
+                      'Pass',
+                      filled: false,
+                      onPressed: () {
+                        model.openPerson(person, AppRoute.likes);
+                        model.passInvite();
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    _SmallAction(
+                      'Accept',
+                      filled: true,
+                      onPressed: () {
+                        model.openPerson(person, AppRoute.likes);
+                        model.acceptInvite();
+                      },
+                    ),
+                  ],
+                ),
+              )
           else
             const EmptyState(
               title: 'No invites yet.',
@@ -63,12 +70,13 @@ class MatesScreen extends StatelessWidget {
             title: 'Mates',
             supporting: 'People who are up for going out with you.',
           ),
-          if (model.showMates)
-            _PersonRow(
-              person: riya,
-              showChevron: true,
-              onOpen: () => model.go(AppRoute.mateProfile),
-            )
+          if (model.mateList.isNotEmpty)
+            for (final person in model.mateList)
+              _PersonRow(
+                person: person,
+                showChevron: true,
+                onOpen: () => model.openPerson(person, AppRoute.mateProfile),
+              )
           else
             EmptyState(
               title: 'No mates yet.',
@@ -91,11 +99,7 @@ class PersonDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final model = MockScope.watch(context);
-    final person = switch (kind) {
-      AppRoute.inviteDetail => aria,
-      AppRoute.mateProfile => riya,
-      _ => meera,
-    };
+    final person = model.personFor(kind);
     final back = switch (kind) {
       AppRoute.inviteDetail => AppRoute.likes,
       AppRoute.mateProfile => AppRoute.mates,
@@ -141,7 +145,7 @@ class PersonDetailScreen extends StatelessWidget {
                       style: ClubType.lora(27, height: 1.2),
                     ),
                     const SizedBox(height: 5),
-                    PlaceLine(person.location),
+                    PlaceLine(person.location, verified: person.verified),
                     const SizedBox(height: 24),
                     const Divider(height: 1, color: ClubColors.border),
                     if (kind == AppRoute.mateProfile) ...[
@@ -168,24 +172,38 @@ class PersonDetailScreen extends StatelessWidget {
                     ],
                     const SizedBox(height: 26),
                     _CopyBlock('Tonight', person.tonight),
-                    const SizedBox(height: 26),
-                    _CopyBlock('Usually out for', person.usually),
-                    const SizedBox(height: 26),
-                    const Eyebrow('Interests'),
-                    const SizedBox(height: 7),
-                    ChipWrap(
-                      children: [
-                        for (final interest in person.interests)
-                          ChoiceChipButton(interest, compact: true),
-                      ],
-                    ),
-                    const SizedBox(height: 26),
-                    const ProfilePhoto(
-                      nightPhoto,
-                      height: 360,
-                      width: double.infinity,
-                      radius: 14,
-                    ),
+                    if (person.usually.isNotEmpty) ...[
+                      const SizedBox(height: 26),
+                      _CopyBlock('Usually out for', person.usually),
+                    ],
+                    if (person.interests.isNotEmpty) ...[
+                      const SizedBox(height: 26),
+                      const Eyebrow('Interests'),
+                      const SizedBox(height: 7),
+                      ChipWrap(
+                        children: [
+                          for (final interest in person.interests)
+                            ChoiceChipButton(interest, compact: true),
+                        ],
+                      ),
+                    ],
+                    if (model.live) ...[
+                      const SizedBox(height: 20),
+                      TextLink(
+                        'Block',
+                        color: ClubColors.error,
+                        onPressed: model.blockOpened,
+                      ),
+                    ],
+                    if (!model.live) ...[
+                      const SizedBox(height: 26),
+                      const ProfilePhoto(
+                        nightPhoto,
+                        height: 360,
+                        width: double.infinity,
+                        radius: 14,
+                      ),
+                    ],
                     if (kind == AppRoute.mateProfile) ...[
                       const SizedBox(height: 24),
                       SecondaryButton(
@@ -208,6 +226,8 @@ class PersonDetailScreen extends StatelessWidget {
               onPass: () {
                 if (kind == AppRoute.inviteDetail) {
                   model.passInvite();
+                } else if (kind == AppRoute.details) {
+                  model.passClub();
                 } else {
                   model.go(AppRoute.club);
                 }
@@ -218,7 +238,7 @@ class PersonDetailScreen extends StatelessWidget {
                 } else if (kind == AppRoute.mateProfile) {
                   model.go(AppRoute.mates);
                 } else {
-                  model.go(AppRoute.inviteSent);
+                  model.inviteClub();
                 }
               },
             ),
@@ -286,7 +306,11 @@ class _PersonRow extends StatelessWidget {
                       style: ClubType.lora(18, height: 1.2),
                     ),
                     const SizedBox(height: 4),
-                    PlaceLine(person.location, size: 12),
+                    PlaceLine(
+                      person.location,
+                      size: 12,
+                      verified: person.verified,
+                    ),
                     const SizedBox(height: 8),
                     Text(
                       person.preview,

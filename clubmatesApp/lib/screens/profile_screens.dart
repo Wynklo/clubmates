@@ -21,23 +21,24 @@ class ProfileScreen extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
             child: Row(
               children: [
-                const ProfilePhoto(
-                  ownPhoto,
-                  width: 94,
-                  height: 112,
-                  radius: 14,
-                ),
+                ProfilePhoto(model.avatar, width: 94, height: 112, radius: 14),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '${model.displayName}, 27',
+                        model.ageLabel.isEmpty
+                            ? model.displayName
+                            : '${model.displayName}, ${model.ageLabel}',
                         style: ClubType.lora(23, height: 1.2),
                       ),
                       const SizedBox(height: 5),
-                      PlaceLine(model.location, size: 12),
+                      PlaceLine(
+                        model.location,
+                        size: 12,
+                        verified: model.isVerified,
+                      ),
                     ],
                   ),
                 ),
@@ -59,7 +60,7 @@ class ProfileScreen extends StatelessWidget {
                 ),
                 SettingsRow(
                   'Verification',
-                  detail: 'Verified',
+                  detail: model.isVerified ? 'Verified' : 'Not yet',
                   onPressed: () => model.go(AppRoute.status),
                 ),
                 SettingsRow(
@@ -70,10 +71,7 @@ class ProfileScreen extends StatelessWidget {
                   'Settings',
                   onPressed: () => model.go(AppRoute.settings),
                 ),
-                SettingsRow(
-                  'Log out',
-                  onPressed: () => model.go(AppRoute.phone),
-                ),
+                SettingsRow('Log out', onPressed: model.signOut),
               ],
             ),
           ),
@@ -101,9 +99,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final model = MockScope.read(context);
     _name = TextEditingController(text: model.displayName);
     _location = TextEditingController(text: model.location);
-    _bio = TextEditingController(
-      text: 'Always up for good food and a new playlist.',
-    );
+    _bio = TextEditingController(text: model.bio);
   }
 
   @override
@@ -193,7 +189,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 const Eyebrow('Sex'),
                 const SizedBox(height: 12),
                 ChipWrap(
-                  children: [ChoiceChipButton(model.sex, selected: true)],
+                  children: [
+                    for (final option in sexOptions)
+                      ChoiceChipButton(
+                        option,
+                        selected: model.sex == option,
+                        onPressed: () => model.setSex(option),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 20),
                 const Eyebrow('Nightlife preferences'),
@@ -218,7 +221,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               padding: const EdgeInsets.all(6),
               child: PrimaryButton(
                 'Save changes',
-                onPressed: () => model.go(AppRoute.profile),
+                onPressed: model.busy
+                    ? null
+                    : () => model.saveEdits(
+                        nextName: _name.text,
+                        nextBio: _bio.text,
+                        nextCity: _location.text,
+                      ),
               ),
             ),
           ),
@@ -239,6 +248,17 @@ class SettingsScreen extends StatelessWidget {
       onBack: () => model.go(AppRoute.profile),
       child: Column(
         children: [
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text('Discoverable', style: ClubType.inter(14)),
+            subtitle: Text(
+              'People can find you in Club when this is on.',
+              style: ClubType.inter(12, color: ClubColors.muted),
+            ),
+            value: model.discoverable,
+            activeThumbColor: ClubColors.brand,
+            onChanged: model.busy ? null : model.setDiscoverable,
+          ),
           for (final label in [
             'Account',
             'Notifications',
@@ -256,8 +276,34 @@ class SettingsScreen extends StatelessWidget {
             'Terms',
             'Privacy Policy',
           ])
-            SettingsRow(label),
-          const SettingsRow('Delete account', danger: true),
+            if (label != 'Blocked people') SettingsRow(label),
+          for (final person in model.blocked)
+            SettingsRow(
+              person.name,
+              detail: 'Unblock',
+              onPressed: () => model.unblock(person.id),
+            ),
+          SettingsRow(
+            'Delete account',
+            danger: true,
+            onPressed: () {
+              showDialog<void>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Delete account'),
+                  content: const Text(
+                    'Account deletion is not finished. This does not erase your profile or photos. Log out to end this session.',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('OK'),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
         ],
       ),
     );
@@ -278,16 +324,27 @@ class StatusScreen extends StatelessWidget {
         children: [
           const SizedBox(height: 36),
           const SuccessMark(),
-          Text('Profile verified', style: ClubType.lora(27, height: 1.2)),
+          Text(
+            model.isVerified ? 'Profile verified' : 'Not verified yet',
+            style: ClubType.lora(27, height: 1.2),
+          ),
           const SizedBox(height: 9),
           Text(
-            'Verified profiles help everyone feel more confident making plans.',
+            model.isVerified
+                ? 'Verified profiles help everyone feel more confident making plans.'
+                : 'Identity and face checks are not part of this version. Clubmates adds the badge after a real check.',
             textAlign: TextAlign.center,
             style: ClubType.inter(14, color: ClubColors.muted),
           ),
           const SizedBox(height: 28),
-          const SettingsRow('Identity document', detail: 'Verified'),
-          const SettingsRow('Face check', detail: 'Verified'),
+          SettingsRow(
+            'Identity document',
+            detail: model.isVerified ? 'Verified' : 'Not checked',
+          ),
+          SettingsRow(
+            'Face check',
+            detail: model.isVerified ? 'Verified' : 'Not checked',
+          ),
           const SizedBox(height: 8),
           TextLink(
             'Having trouble with verification?',
@@ -336,7 +393,7 @@ class ErrorScreen extends StatelessWidget {
           style: ClubType.inter(15, color: ClubColors.muted),
         ),
         const SizedBox(height: 32),
-        PrimaryButton('Try again', onPressed: () => model.go(AppRoute.status)),
+        PrimaryButton('Try again', onPressed: model.retry),
         const SizedBox(height: 10),
         SecondaryButton(
           'Back to profile',

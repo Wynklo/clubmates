@@ -493,11 +493,13 @@ class PlaceLine extends StatelessWidget {
     super.key,
     this.onDark = false,
     this.size = 13,
+    this.verified = true,
   });
 
   final String location;
   final bool onDark;
   final double size;
+  final bool verified;
 
   @override
   Widget build(BuildContext context) {
@@ -511,8 +513,10 @@ class PlaceLine extends StatelessWidget {
       runSpacing: 4,
       children: [
         Text(location, style: style),
-        Text('·', style: style),
-        VerifiedLabel(onDark: onDark),
+        if (verified) ...[
+          Text('·', style: style),
+          VerifiedLabel(onDark: onDark),
+        ],
       ],
     );
   }
@@ -542,6 +546,7 @@ class OnboardingFrame extends StatelessWidget {
     this.progress,
     this.footer,
     this.headerAction,
+    this.error,
   });
 
   final String title;
@@ -550,6 +555,7 @@ class OnboardingFrame extends StatelessWidget {
   final int? progress;
   final Widget? footer;
   final Widget? headerAction;
+  final String? error;
   final List<Widget> children;
 
   @override
@@ -616,6 +622,16 @@ class OnboardingFrame extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 32),
+                          if (error != null && error!.isNotEmpty) ...[
+                            Text(
+                              error!,
+                              style: ClubType.inter(
+                                13,
+                                color: ClubColors.error,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                          ],
                           ...children,
                         ],
                       ),
@@ -980,16 +996,32 @@ class ProfilePhoto extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(radius),
-      child: Image.asset(
-        asset,
-        width: width,
-        height: height,
-        fit: BoxFit.cover,
-        alignment: alignment,
-      ),
-    );
+    final remote = asset.startsWith('http');
+    final child = asset.isEmpty
+        ? ColoredBox(
+            color: ClubColors.track,
+            child: SizedBox(width: width, height: height),
+          )
+        : remote
+        ? Image.network(
+            asset,
+            width: width,
+            height: height,
+            fit: BoxFit.cover,
+            alignment: alignment,
+            errorBuilder: (context, error, stackTrace) => ColoredBox(
+              color: ClubColors.track,
+              child: SizedBox(width: width, height: height),
+            ),
+          )
+        : Image.asset(
+            asset,
+            width: width,
+            height: height,
+            fit: BoxFit.cover,
+            alignment: alignment,
+          );
+    return ClipRRect(borderRadius: BorderRadius.circular(radius), child: child);
   }
 }
 
@@ -1102,6 +1134,8 @@ class _PhotoGridState extends State<PhotoGrid> {
 
   @override
   Widget build(BuildContext context) {
+    final model = MockScope.watch(context);
+    if (model.live) return _LivePhotos(model: model);
     return GridView.count(
       crossAxisCount: 3,
       shrinkWrap: true,
@@ -1170,6 +1204,85 @@ class _PhotoGridState extends State<PhotoGrid> {
                 ),
               ),
             ),
+      ],
+    );
+  }
+}
+
+class _LivePhotos extends StatelessWidget {
+  const _LivePhotos({required this.model});
+
+  final MockModel model;
+
+  @override
+  Widget build(BuildContext context) {
+    return GridView.count(
+      crossAxisCount: 3,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: 8,
+      crossAxisSpacing: 8,
+      childAspectRatio: 0.78,
+      children: [
+        for (final photo in model.ownPhotos)
+          GestureDetector(
+            onTap: () => model.makePrimary(photo),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                ProfilePhoto(photo.url, radius: 12),
+                Positioned(
+                  left: 6,
+                  bottom: 6,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: ClubColors.ink,
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 4,
+                      ),
+                      child: Text(
+                        photo.primary ? 'PRIMARY' : photo.moderation,
+                        style: ClubType.inter(
+                          9,
+                          color: Colors.white,
+                          weight: FontWeight.w600,
+                          height: 1,
+                          letterSpacing: 0.7,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 5,
+                  right: 5,
+                  child: GlassIconButton(
+                    icon: 'close',
+                    tooltip: 'Remove photo',
+                    size: 28,
+                    clear: true,
+                    onPressed: () => model.removePhoto(photo),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        if (model.ownPhotos.length < 6)
+          DecoratedBox(
+            decoration: glassPaint(radius: 20),
+            child: Material(
+              type: MaterialType.transparency,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: model.busy ? null : () => model.pickPhoto(camera: false),
+                child: const Center(child: ClubIcon('plus')),
+              ),
+            ),
+          ),
       ],
     );
   }
