@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../club_icon.dart';
+import '../liquid_glass.dart';
 import '../mock_model.dart';
 import '../theme.dart';
 import '../widgets.dart';
@@ -13,6 +14,7 @@ class LikesScreen extends StatelessWidget {
     final model = MockScope.watch(context);
     return MainShell(
       child: ListView(
+        padding: EdgeInsets.only(bottom: ClubChrome.clearance(context)),
         children: [
           const PageHeading(title: 'People who want to go out with you'),
           if (model.showLikes)
@@ -55,6 +57,7 @@ class MatesScreen extends StatelessWidget {
     final model = MockScope.watch(context);
     return MainShell(
       child: ListView(
+        padding: EdgeInsets.only(bottom: ClubChrome.clearance(context)),
         children: [
           const PageHeading(
             title: 'Mates',
@@ -104,126 +107,121 @@ class PersonDetailScreen extends StatelessWidget {
       _ => 'Invite',
     };
 
+    final bottom = MediaQuery.paddingOf(context).bottom;
     return Scaffold(
-      body: Column(
+      body: Stack(
         children: [
-          Expanded(
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                Stack(
-                  children: [
-                    ProfilePhoto(
-                      person.photo,
-                      height: MediaQuery.sizeOf(context).height * 0.62,
-                      width: double.infinity,
+          ListView(
+            padding: EdgeInsets.only(bottom: bottom + 96),
+            children: [
+              Stack(
+                children: [
+                  ProfilePhoto(
+                    person.photo,
+                    height: MediaQuery.sizeOf(context).height * 0.62,
+                    width: double.infinity,
+                  ),
+                  Positioned(
+                    top: MediaQuery.paddingOf(context).top + 14,
+                    left: 14,
+                    child: GlassIconButton(
+                      clear: true,
+                      onPressed: () => model.go(back),
                     ),
-                    Positioned(
-                      top: MediaQuery.paddingOf(context).top + 14,
-                      left: 14,
-                      child: Material(
-                        color: ClubColors.paper,
-                        shape: const CircleBorder(),
-                        elevation: 2,
-                        child: IconButton(
-                          tooltip: 'Back',
-                          onPressed: () => model.go(back),
-                          icon: const ClubIcon('back'),
+                  ),
+                ],
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 22, 20, 34),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${person.name}, ${person.age}',
+                      style: ClubType.lora(27, height: 1.2),
+                    ),
+                    const SizedBox(height: 5),
+                    PlaceLine(person.location),
+                    const SizedBox(height: 24),
+                    const Divider(height: 1, color: ClubColors.border),
+                    if (kind == AppRoute.mateProfile) ...[
+                      const SizedBox(height: 14),
+                      DecoratedBox(
+                        decoration: glassPaint(selected: true, radius: 999),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 9,
+                            vertical: 6,
+                          ),
+                          child: Text(
+                            'MATCHED',
+                            style: ClubType.inter(
+                              11,
+                              color: ClubColors.plum,
+                              weight: FontWeight.w600,
+                              height: 1,
+                              letterSpacing: 0.9,
+                            ),
+                          ),
                         ),
                       ),
+                    ],
+                    const SizedBox(height: 26),
+                    _CopyBlock('Tonight', person.tonight),
+                    const SizedBox(height: 26),
+                    _CopyBlock('Usually out for', person.usually),
+                    const SizedBox(height: 26),
+                    const Eyebrow('Interests'),
+                    const SizedBox(height: 7),
+                    ChipWrap(
+                      children: [
+                        for (final interest in person.interests)
+                          ChoiceChipButton(interest, compact: true),
+                      ],
                     ),
+                    const SizedBox(height: 26),
+                    const ProfilePhoto(
+                      nightPhoto,
+                      height: 360,
+                      width: double.infinity,
+                      radius: 14,
+                    ),
+                    if (kind == AppRoute.mateProfile) ...[
+                      const SizedBox(height: 24),
+                      SecondaryButton(
+                        'Remove Mate',
+                        foreground: ClubColors.error,
+                        onPressed: model.removeMate,
+                      ),
+                    ],
                   ],
                 ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 22, 20, 34),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${person.name}, ${person.age}',
-                        style: ClubType.lora(27, height: 1.2),
-                      ),
-                      const SizedBox(height: 5),
-                      PlaceLine(person.location),
-                      const SizedBox(height: 24),
-                      const Divider(height: 1, color: ClubColors.border),
-                      if (kind == AppRoute.mateProfile) ...[
-                        const SizedBox(height: 14),
-                        DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: ClubColors.soft,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 9,
-                              vertical: 6,
-                            ),
-                            child: Text(
-                              'MATCHED',
-                              style: ClubType.inter(
-                                11,
-                                color: ClubColors.plum,
-                                weight: FontWeight.w600,
-                                height: 1,
-                                letterSpacing: 0.9,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: 26),
-                      _CopyBlock('Tonight', person.tonight),
-                      const SizedBox(height: 26),
-                      _CopyBlock('Usually out for', person.usually),
-                      const SizedBox(height: 26),
-                      const Eyebrow('Interests'),
-                      const SizedBox(height: 7),
-                      ChipWrap(
-                        children: [
-                          for (final interest in person.interests)
-                            ChoiceChipButton(interest, compact: true),
-                        ],
-                      ),
-                      const SizedBox(height: 26),
-                      const ProfilePhoto(
-                        nightPhoto,
-                        height: 360,
-                        width: double.infinity,
-                        radius: 14,
-                      ),
-                      if (kind == AppRoute.mateProfile) ...[
-                        const SizedBox(height: 24),
-                        SecondaryButton(
-                          'Remove Mate',
-                          foreground: ClubColors.error,
-                          onPressed: model.removeMate,
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-          ActionBar(
-            inviteLabel: inviteLabel,
-            onPass: () {
-              if (kind == AppRoute.inviteDetail) {
-                model.passInvite();
-              } else {
-                model.go(AppRoute.club);
-              }
-            },
-            onInvite: () {
-              if (kind == AppRoute.inviteDetail) {
-                model.acceptInvite();
-              } else if (kind == AppRoute.mateProfile) {
-                model.go(AppRoute.mates);
-              } else {
-                model.go(AppRoute.inviteSent);
-              }
-            },
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: bottom + 8,
+            child: ActionBar(
+              inviteLabel: inviteLabel,
+              onPass: () {
+                if (kind == AppRoute.inviteDetail) {
+                  model.passInvite();
+                } else {
+                  model.go(AppRoute.club);
+                }
+              },
+              onInvite: () {
+                if (kind == AppRoute.inviteDetail) {
+                  model.acceptInvite();
+                } else if (kind == AppRoute.mateProfile) {
+                  model.go(AppRoute.mates);
+                } else {
+                  model.go(AppRoute.inviteSent);
+                }
+              },
+            ),
           ),
         ],
       ),
@@ -327,24 +325,26 @@ class _SmallAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: filled ? ClubColors.ink : ClubColors.field,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: filled ? ClubColors.ink : ClubColors.border),
-      ),
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-          child: Text(
-            label,
-            style: ClubType.inter(
-              12,
-              weight: FontWeight.w600,
-              height: 1,
-              color: filled ? ClubColors.paper : ClubColors.ink,
+    const radius = BorderRadius.all(Radius.circular(18));
+    return DecoratedBox(
+      decoration: filled
+          ? tintedPaint(enabled: true, radius: 18)
+          : glassPaint(radius: 18),
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: radius,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+            child: Text(
+              label,
+              style: ClubType.inter(
+                12,
+                weight: FontWeight.w600,
+                height: 1,
+                color: filled ? ClubColors.paper : ClubColors.ink,
+              ),
             ),
           ),
         ),

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../club_icon.dart';
+import '../liquid_glass.dart';
 import '../mock_model.dart';
 import '../theme.dart';
 import '../widgets.dart';
@@ -53,10 +54,7 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    final club = CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOut,
-    );
+    final club = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
     final fade = CurvedAnimation(
       parent: _controller,
       curve: const Interval(0.75, 1, curve: Curves.ease),
@@ -473,40 +471,36 @@ class IdentityScreen extends StatelessWidget {
           const SizedBox(height: 10),
         ],
         const SizedBox(height: 6),
-        Material(
-          color: model.uploaded ? ClubColors.soft : ClubColors.field,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: BorderSide(
-              color: model.uploaded
-                  ? const Color(0x66994EA8)
-                  : const Color(0x591A1A1A),
-              style: model.uploaded ? BorderStyle.solid : BorderStyle.solid,
-            ),
-          ),
-          child: InkWell(
-            onTap: model.markUploaded,
-            borderRadius: BorderRadius.circular(12),
-            child: SizedBox(
-              height: 104,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  ClubIcon(
-                    model.uploaded ? 'check' : 'plus',
-                    color: model.uploaded ? ClubColors.plum : ClubColors.ink,
-                  ),
-                  const SizedBox(width: 9),
-                  Text(
-                    model.uploaded ? 'Document uploaded' : 'Upload document',
-                    style: ClubType.inter(
-                      16,
-                      weight: FontWeight.w600,
-                      height: 1,
+        DecoratedBox(
+          decoration: glassPaint(selected: model.uploaded, radius: 24),
+          child: Material(
+            type: MaterialType.transparency,
+            child: InkWell(
+              onTap: model.markUploaded,
+              borderRadius: BorderRadius.circular(24),
+              child: SizedBox(
+                height: 104,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ClubIcon(
+                      model.uploaded ? 'check' : 'plus',
                       color: model.uploaded ? ClubColors.plum : ClubColors.ink,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 9),
+                    Text(
+                      model.uploaded ? 'Document uploaded' : 'Upload document',
+                      style: ClubType.inter(
+                        16,
+                        weight: FontWeight.w600,
+                        height: 1,
+                        color: model.uploaded
+                            ? ClubColors.plum
+                            : ClubColors.ink,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -533,62 +527,63 @@ class _IdOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: selected ? ClubColors.soft : ClubColors.field,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: selected ? const Color(0x8C994EA8) : ClubColors.border,
-        ),
-      ),
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label,
-                      style: ClubType.inter(
-                        16,
-                        weight: FontWeight.w600,
-                        height: 1.2,
+    return DecoratedBox(
+      decoration: glassPaint(selected: selected, radius: 22),
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(22),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        label,
+                        style: ClubType.inter(
+                          16,
+                          weight: FontWeight.w600,
+                          height: 1.2,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Government ID verification',
-                      style: ClubType.inter(
-                        13,
-                        color: ClubColors.muted,
-                        height: 1.2,
+                      const SizedBox(height: 4),
+                      Text(
+                        'Government ID verification',
+                        style: ClubType.inter(
+                          13,
+                          color: ClubColors.muted,
+                          height: 1.2,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                width: 22,
-                height: 22,
-                decoration: BoxDecoration(
-                  color: selected ? ClubColors.brand : ClubColors.field,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: selected ? ClubColors.brand : ClubColors.border,
+                    ],
                   ),
                 ),
-                child: selected
-                    ? const Center(
-                        child: ClubIcon('check', size: 16, color: Colors.white),
-                      )
-                    : null,
-              ),
-            ],
+                Container(
+                  width: 22,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    color: selected ? ClubColors.brand : ClubColors.field,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: selected ? ClubColors.brand : ClubColors.border,
+                    ),
+                  ),
+                  child: selected
+                      ? const Center(
+                          child: ClubIcon(
+                            'check',
+                            size: 16,
+                            color: Colors.white,
+                          ),
+                        )
+                      : null,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -607,6 +602,7 @@ class FaceScreen extends StatelessWidget {
       supporting: 'Look at the camera so we can verify your profile.',
       onBack: () => model.go(AppRoute.identity),
       footer: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           PrimaryButton(
             'Capture',

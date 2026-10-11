@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../club_icon.dart';
+import '../liquid_glass.dart';
 import '../mock_model.dart';
 import '../theme.dart';
 import '../widgets.dart';
@@ -13,6 +14,7 @@ class ProfileScreen extends StatelessWidget {
     final model = MockScope.watch(context);
     return MainShell(
       child: ListView(
+        padding: EdgeInsets.only(bottom: ClubChrome.clearance(context)),
         children: [
           const PageHeading(title: 'Your profile'),
           Padding(
@@ -115,118 +117,112 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final model = MockScope.watch(context);
+    final bottom = MediaQuery.paddingOf(context).bottom;
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-                children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: IconButton(
-                      tooltip: 'Back',
-                      onPressed: () => model.go(AppRoute.profile),
-                      icon: const ClubIcon('back'),
-                    ),
+      body: Stack(
+        children: [
+          SafeArea(
+            bottom: false,
+            child: ListView(
+              padding: EdgeInsets.fromLTRB(20, 8, 20, bottom + 100),
+              children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: GlassIconButton(
+                    onPressed: () => model.go(AppRoute.profile),
                   ),
-                  Text('Edit profile', style: ClubType.lora(32)),
-                  const SizedBox(height: 30),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: SizedBox(
-                      width: 120,
-                      height: 140,
-                      child: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          const ProfilePhoto(
-                            ownPhoto,
-                            width: 110,
-                            height: 130,
-                            radius: 14,
-                          ),
-                          Positioned(
-                            right: 0,
-                            bottom: 0,
-                            child: Material(
-                              color: ClubColors.field,
-                              shape: const CircleBorder(
-                                side: BorderSide(color: ClubColors.border),
-                              ),
-                              child: const SizedBox(
-                                width: 42,
-                                height: 42,
-                                child: Center(
-                                  child: ClubIcon('camera', size: 18),
-                                ),
+                ),
+                Text('Edit profile', style: ClubType.lora(32)),
+                const SizedBox(height: 30),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: SizedBox(
+                    width: 120,
+                    height: 140,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        const ProfilePhoto(
+                          ownPhoto,
+                          width: 110,
+                          height: 130,
+                          radius: 14,
+                        ),
+                        const Positioned(
+                          right: 0,
+                          bottom: 0,
+                          child: LiquidGlass(
+                            borderRadius: BorderRadius.all(Radius.circular(21)),
+                            child: SizedBox(
+                              width: 42,
+                              height: 42,
+                              child: Center(
+                                child: ClubIcon('camera', size: 18),
                               ),
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 28),
-                  ClubField(
-                    label: 'Name',
-                    hint: 'Aanya',
-                    controller: _name,
-                    onChanged: model.setName,
-                  ),
-                  const SizedBox(height: 20),
-                  ClubField(
-                    label: 'Bio',
-                    hint: 'Bio',
-                    controller: _bio,
-                    maxLines: 4,
-                  ),
-                  const SizedBox(height: 20),
-                  ClubField(
-                    label: 'Location',
-                    hint: 'Bengaluru',
-                    controller: _location,
-                    onChanged: model.setLocation,
-                  ),
-                  const SizedBox(height: 20),
-                  const ClubField(label: 'Height', hint: '172 cm'),
-                  const SizedBox(height: 20),
-                  const Eyebrow('Sex'),
-                  const SizedBox(height: 12),
-                  ChipWrap(
-                    children: [ChoiceChipButton(model.sex, selected: true)],
-                  ),
-                  const SizedBox(height: 20),
-                  const Eyebrow('Nightlife preferences'),
-                  const SizedBox(height: 12),
-                  ChipWrap(
-                    children: [
-                      for (final item in model.interests)
-                        ChoiceChipButton(item, selected: true),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  const PhotoGrid(),
-                ],
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
-              decoration: const BoxDecoration(
-                color: ClubColors.paper,
-                border: Border(top: BorderSide(color: ClubColors.border)),
-              ),
-              child: SafeArea(
-                top: false,
-                child: PrimaryButton(
-                  'Save changes',
-                  onPressed: () => model.go(AppRoute.profile),
                 ),
+                const SizedBox(height: 28),
+                ClubField(
+                  label: 'Name',
+                  hint: 'Aanya',
+                  controller: _name,
+                  onChanged: model.setName,
+                ),
+                const SizedBox(height: 20),
+                ClubField(
+                  label: 'Bio',
+                  hint: 'Bio',
+                  controller: _bio,
+                  maxLines: 4,
+                ),
+                const SizedBox(height: 20),
+                ClubField(
+                  label: 'Location',
+                  hint: 'Bengaluru',
+                  controller: _location,
+                  onChanged: model.setLocation,
+                ),
+                const SizedBox(height: 20),
+                const ClubField(label: 'Height', hint: '172 cm'),
+                const SizedBox(height: 20),
+                const Eyebrow('Sex'),
+                const SizedBox(height: 12),
+                ChipWrap(
+                  children: [ChoiceChipButton(model.sex, selected: true)],
+                ),
+                const SizedBox(height: 20),
+                const Eyebrow('Nightlife preferences'),
+                const SizedBox(height: 12),
+                ChipWrap(
+                  children: [
+                    for (final item in model.interests)
+                      ChoiceChipButton(item, selected: true),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                const PhotoGrid(),
+              ],
+            ),
+          ),
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: bottom + 10,
+            child: LiquidGlass(
+              borderRadius: BorderRadius.circular(32),
+              padding: const EdgeInsets.all(6),
+              child: PrimaryButton(
+                'Save changes',
+                onPressed: () => model.go(AppRoute.profile),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -312,18 +308,20 @@ class ErrorScreen extends StatelessWidget {
     final model = MockScope.read(context);
     return CenteredScreen(
       children: [
-        Container(
-          width: 54,
-          height: 54,
-          margin: const EdgeInsets.only(bottom: 26),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: const Color(0x599E3328)),
-          ),
-          child: Text(
-            '!',
-            style: ClubType.lora(28, color: ClubColors.error, height: 1),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 26),
+          child: LiquidGlass(
+            borderRadius: BorderRadius.circular(27),
+            child: SizedBox(
+              width: 54,
+              height: 54,
+              child: Center(
+                child: Text(
+                  '!',
+                  style: ClubType.lora(28, color: ClubColors.error, height: 1),
+                ),
+              ),
+            ),
           ),
         ),
         Text(
@@ -371,11 +369,7 @@ class _InnerPage extends StatelessWidget {
           children: [
             Align(
               alignment: Alignment.centerLeft,
-              child: IconButton(
-                tooltip: 'Back',
-                onPressed: onBack,
-                icon: const ClubIcon('back'),
-              ),
+              child: GlassIconButton(onPressed: onBack),
             ),
             Text(title, style: ClubType.lora(32)),
             if (supporting != null) ...[

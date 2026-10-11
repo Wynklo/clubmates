@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'club_icon.dart';
+import 'liquid_glass.dart';
 import 'mock_model.dart';
 import 'theme.dart';
 
@@ -43,28 +44,26 @@ class PrimaryButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final enabled = onPressed != null;
-    return Material(
-      color: enabled ? ClubColors.ink : ClubColors.disabledFill,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: enabled ? ClubColors.ink : ClubColors.disabledLine,
-        ),
-      ),
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(12),
-        child: SizedBox(
-          height: 48,
-          width: double.infinity,
-          child: Center(
-            child: Text(
-              label,
-              style: ClubType.inter(
-                16,
-                weight: FontWeight.w600,
-                height: 1,
-                color: enabled ? ClubColors.paper : ClubColors.disabledText,
+    const radius = BorderRadius.all(Radius.circular(25));
+    return DecoratedBox(
+      decoration: tintedPaint(enabled: enabled, radius: 25),
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: radius,
+          child: SizedBox(
+            height: 50,
+            width: double.infinity,
+            child: Center(
+              child: Text(
+                label,
+                style: ClubType.inter(
+                  16,
+                  weight: FontWeight.w600,
+                  height: 1,
+                  color: enabled ? ClubColors.paper : ClubColors.disabledText,
+                ),
               ),
             ),
           ),
@@ -91,35 +90,35 @@ class SecondaryButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = foreground ?? ClubColors.ink;
-    return Material(
-      color: ClubColors.paper,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: ClubColors.border),
-      ),
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(12),
-        child: SizedBox(
-          height: 48,
-          width: double.infinity,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (icon != null) ...[
-                ClubIcon(icon!, size: 18, color: color),
-                const SizedBox(width: 8),
-              ],
-              Text(
-                label,
-                style: ClubType.inter(
-                  16,
-                  weight: FontWeight.w600,
-                  height: 1,
-                  color: color,
+    const radius = BorderRadius.all(Radius.circular(25));
+    return DecoratedBox(
+      decoration: glassPaint(radius: 25),
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: radius,
+          child: SizedBox(
+            height: 50,
+            width: double.infinity,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (icon != null) ...[
+                  ClubIcon(icon!, size: 18, color: color),
+                  const SizedBox(width: 8),
+                ],
+                Text(
+                  label,
+                  style: ClubType.inter(
+                    16,
+                    weight: FontWeight.w600,
+                    height: 1,
+                    color: color,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -210,32 +209,35 @@ class ClubField extends StatelessWidget {
           Text(label!.toUpperCase(), style: ClubType.eyebrow),
           const SizedBox(height: 8),
         ],
-        TextField(
-          controller: controller,
-          onChanged: onChanged,
-          keyboardType: keyboardType,
-          inputFormatters: inputFormatters,
-          maxLines: maxLines,
-          style: ClubType.inter(16, height: 1.3),
-          cursorColor: ClubColors.brand,
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: ClubType.inter(
-              16,
-              color: ClubColors.disabled,
-              height: 1.3,
+        DecoratedBox(
+          decoration: glassPaint(radius: maxLines == 1 ? 25 : 22),
+          child: TextField(
+            controller: controller,
+            onChanged: onChanged,
+            keyboardType: keyboardType,
+            inputFormatters: inputFormatters,
+            maxLines: maxLines,
+            style: ClubType.inter(16, height: 1.3),
+            cursorColor: ClubColors.brand,
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: ClubType.inter(
+                16,
+                color: ClubColors.disabled,
+                height: 1.3,
+              ),
+              filled: false,
+              border: InputBorder.none,
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: maxLines > 1 ? 14 : 14,
+              ),
+              constraints: maxLines == 1
+                  ? const BoxConstraints(minHeight: 50)
+                  : const BoxConstraints(minHeight: 96),
+              enabledBorder: _border(Colors.transparent),
+              focusedBorder: _border(ClubColors.brand, width: 1.5),
             ),
-            filled: true,
-            fillColor: ClubColors.field,
-            contentPadding: EdgeInsets.symmetric(
-              horizontal: 14,
-              vertical: maxLines > 1 ? 14 : 14,
-            ),
-            constraints: maxLines == 1
-                ? const BoxConstraints(minHeight: 48)
-                : const BoxConstraints(minHeight: 96),
-            enabledBorder: _border(ClubColors.border),
-            focusedBorder: _border(ClubColors.brand, width: 1.5),
           ),
         ),
       ],
@@ -259,12 +261,8 @@ class PhoneField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 48,
-      decoration: BoxDecoration(
-        color: ClubColors.field,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: ClubColors.border),
-      ),
+      height: 50,
+      decoration: glassPaint(radius: 25),
       child: Row(
         children: [
           Container(
@@ -362,8 +360,8 @@ class _OtpInputState extends State<OtpInput> {
         for (var i = 0; i < 6; i++) ...[
           if (i > 0) const SizedBox(width: 8),
           Expanded(
-            child: SizedBox(
-              height: 54,
+            child: DecoratedBox(
+              decoration: glassPaint(radius: 16),
               child: TextField(
                 controller: _controllers[i],
                 focusNode: _nodes[i],
@@ -379,12 +377,14 @@ class _OtpInputState extends State<OtpInput> {
                 decoration: InputDecoration(
                   counterText: '',
                   contentPadding: EdgeInsets.zero,
+                  filled: false,
+                  border: InputBorder.none,
                   enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(color: ClubColors.border),
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: Colors.transparent),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(16),
                     borderSide: const BorderSide(
                       color: ClubColors.brand,
                       width: 1.5,
@@ -421,27 +421,25 @@ class ChoiceChipButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: selected ? ClubColors.soft : ClubColors.field,
-      shape: StadiumBorder(
-        side: BorderSide(
-          color: selected ? const Color(0x8C994EA8) : ClubColors.border,
-        ),
-      ),
-      child: InkWell(
-        onTap: onPressed,
-        customBorder: const StadiumBorder(),
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: compact ? 11 : 14,
-            vertical: compact ? 7 : 9,
-          ),
-          child: Text(
-            label,
-            style: ClubType.inter(
-              compact ? 12 : 13,
-              height: 1.2,
-              color: selected ? ClubColors.plum : ClubColors.ink,
+    return DecoratedBox(
+      decoration: glassPaint(selected: selected, radius: 999),
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: onPressed,
+          customBorder: const StadiumBorder(),
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? 11 : 14,
+              vertical: compact ? 7 : 9,
+            ),
+            child: Text(
+              label,
+              style: ClubType.inter(
+                compact ? 12 : 13,
+                height: 1.2,
+                color: selected ? ClubColors.plum : ClubColors.ink,
+              ),
             ),
           ),
         ),
@@ -556,80 +554,127 @@ class OnboardingFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final safeBottom = MediaQuery.paddingOf(context).bottom;
+    final footerSpace = footer == null ? 20.0 : safeBottom + 108;
     return Scaffold(
-      body: SafeArea(
-        child: GestureDetector(
-          onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              return SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minHeight: constraints.maxHeight - 32,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (progress != null) ...[
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(2),
-                          child: LinearProgressIndicator(
-                            value: (progress! * 0.125).clamp(0.08, 1),
-                            minHeight: 2,
-                            backgroundColor: ClubColors.track,
-                            color: ClubColors.brand,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                      ],
-                      if (onBack != null)
-                        IconButton(
-                          onPressed: onBack,
-                          tooltip: 'Back',
-                          icon: const ClubIcon('back'),
-                          style: IconButton.styleFrom(
-                            backgroundColor: ClubColors.paper,
-                            fixedSize: const Size(44, 44),
-                            padding: EdgeInsets.zero,
-                          ),
-                        )
-                      else
-                        const SizedBox(height: 44),
-                      const SizedBox(height: 12),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
+      body: GestureDetector(
+        onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+        child: Stack(
+          children: [
+            SafeArea(
+              bottom: false,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return SingleChildScrollView(
+                    padding: EdgeInsets.fromLTRB(20, 12, 20, footerSpace),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: constraints.maxHeight - 12 - footerSpace,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(title, style: ClubType.lora(32)),
-                                if (supporting != null) ...[
-                                  const SizedBox(height: 10),
-                                  Text(
-                                    supporting!,
-                                    style: ClubType.inter(
-                                      15,
-                                      color: ClubColors.muted,
-                                    ),
-                                  ),
-                                ],
-                              ],
+                          if (progress != null) ...[
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(2),
+                              child: LinearProgressIndicator(
+                                value: (progress! * 0.125).clamp(0.08, 1),
+                                minHeight: 2,
+                                backgroundColor: ClubColors.track,
+                                color: ClubColors.brand,
+                              ),
                             ),
+                            const SizedBox(height: 8),
+                          ],
+                          if (onBack != null)
+                            GlassIconButton(onPressed: onBack!)
+                          else
+                            const SizedBox(height: 44),
+                          const SizedBox(height: 12),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(title, style: ClubType.lora(32)),
+                                    if (supporting != null) ...[
+                                      const SizedBox(height: 10),
+                                      Text(
+                                        supporting!,
+                                        style: ClubType.inter(
+                                          15,
+                                          color: ClubColors.muted,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                              ?headerAction,
+                            ],
                           ),
-                          ?headerAction,
+                          const SizedBox(height: 32),
+                          ...children,
                         ],
                       ),
-                      const SizedBox(height: 32),
-                      ...children,
-                      const SizedBox(height: 24),
-                      ?footer,
-                    ],
-                  ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            if (footer != null)
+              Positioned(
+                left: 16,
+                right: 16,
+                bottom: safeBottom + 10,
+                child: LiquidGlass(
+                  borderRadius: BorderRadius.circular(32),
+                  padding: const EdgeInsets.all(6),
+                  child: footer!,
                 ),
-              );
-            },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class GlassIconButton extends StatelessWidget {
+  const GlassIconButton({
+    super.key,
+    required this.onPressed,
+    this.icon = 'back',
+    this.clear = false,
+    this.tooltip = 'Back',
+    this.size = 44,
+  });
+
+  final VoidCallback onPressed;
+  final String icon;
+  final bool clear;
+  final String tooltip;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: LiquidGlass(
+        role: clear ? GlassRole.clear : GlassRole.regular,
+        borderRadius: BorderRadius.circular(size / 2),
+        onPressed: onPressed,
+        child: SizedBox(
+          width: size,
+          height: size,
+          child: Center(
+            child: ClubIcon(
+              icon,
+              size: size < 40 ? 16 : 22,
+              color: clear ? Colors.white : ClubColors.ink,
+            ),
           ),
         ),
       ),
@@ -666,20 +711,20 @@ class SuccessMark extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final size = quiet ? 54.0 : 62.0;
-    return Container(
-      width: size,
-      height: size,
-      margin: EdgeInsets.only(bottom: quiet ? 28 : 28),
-      decoration: BoxDecoration(
-        color: ClubColors.soft,
-        shape: BoxShape.circle,
-        border: Border.all(color: const Color(0x66994EA8)),
-      ),
-      child: Center(
-        child: ClubIcon(
-          'check',
-          size: quiet ? 28 : 30,
-          color: ClubColors.brand,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 28),
+      child: LiquidGlass(
+        borderRadius: BorderRadius.circular(size / 2),
+        child: SizedBox(
+          width: size,
+          height: size,
+          child: Center(
+            child: ClubIcon(
+              'check',
+              size: quiet ? 28 : 30,
+              color: ClubColors.brand,
+            ),
+          ),
         ),
       ),
     );
@@ -692,52 +737,83 @@ class BottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final model = MockScope.watch(context);
+    final motionOff = MediaQuery.disableAnimationsOf(context);
     const items = [
       (AppTab.club, 'Club', 'club'),
       (AppTab.likes, 'Likes', 'heart'),
       (AppTab.mates, 'Mates', 'mates'),
       (AppTab.profile, 'Profile', 'profile'),
     ];
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        color: Color(0xF7FFFEFD),
-        border: Border(top: BorderSide(color: ClubColors.border)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          height: 68,
+    return LiquidGlass(
+      borderRadius: BorderRadius.circular(31),
+      child: SizedBox(
+        height: ClubChrome.navHeight,
+        child: Padding(
+          padding: const EdgeInsets.all(4),
           child: Row(
             children: [
               for (final item in items)
                 Expanded(
-                  child: InkWell(
+                  child: _NavItem(
+                    label: item.$2,
+                    icon: item.$3,
+                    selected: model.tab == item.$1,
+                    motionOff: motionOff,
                     onTap: () => MockScope.read(context).goTab(item.$1),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        ClubIcon(
-                          item.$3,
-                          color: model.tab == item.$1
-                              ? ClubColors.ink
-                              : ClubColors.disabled,
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          item.$2,
-                          style: ClubType.inter(
-                            10,
-                            weight: FontWeight.w500,
-                            height: 1.2,
-                            color: model.tab == item.$1
-                                ? ClubColors.ink
-                                : ClubColors.disabled,
-                          ),
-                        ),
-                      ],
-                    ),
                   ),
                 ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NavItem extends StatelessWidget {
+  const _NavItem({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.motionOff,
+    required this.onTap,
+  });
+
+  final String label;
+  final String icon;
+  final bool selected;
+  final bool motionOff;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = selected ? ClubColors.ink : ClubColors.disabled;
+    return Material(
+      type: MaterialType.transparency,
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const StadiumBorder(),
+        child: AnimatedContainer(
+          duration: Duration(milliseconds: motionOff ? 0 : 220),
+          curve: Curves.easeOut,
+          decoration: BoxDecoration(
+            color: selected ? const Color(0xB3FFFFFF) : Colors.transparent,
+            borderRadius: BorderRadius.circular(27),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ClubIcon(icon, color: color),
+              const SizedBox(height: 3),
+              Text(
+                label,
+                style: ClubType.inter(
+                  10,
+                  weight: FontWeight.w500,
+                  height: 1.2,
+                  color: color,
+                ),
+              ),
             ],
           ),
         ),
@@ -753,9 +829,19 @@ class MainShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bottom = MediaQuery.paddingOf(context).bottom;
     return Scaffold(
-      body: SafeArea(bottom: false, child: child),
-      bottomNavigationBar: const BottomNav(),
+      body: Stack(
+        children: [
+          SafeArea(bottom: false, child: child),
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: bottom + 8,
+            child: const BottomNav(),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -913,18 +999,17 @@ class ActionBar extends StatelessWidget {
     required this.onPass,
     required this.onInvite,
     this.inviteLabel = 'Invite',
-    this.pinned = true,
   });
 
   final VoidCallback onPass;
   final VoidCallback onInvite;
   final String inviteLabel;
-  final bool pinned;
 
   @override
   Widget build(BuildContext context) {
-    final bar = Padding(
-      padding: EdgeInsets.fromLTRB(20, pinned ? 10 : 4, 20, pinned ? 10 : 10),
+    return LiquidGlass(
+      borderRadius: BorderRadius.circular(32),
+      padding: const EdgeInsets.all(6),
       child: Row(
         children: [
           Expanded(
@@ -936,7 +1021,7 @@ class ActionBar extends StatelessWidget {
               onPressed: onPass,
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Expanded(
             flex: 3,
             child: _Decision(
@@ -948,14 +1033,6 @@ class ActionBar extends StatelessWidget {
           ),
         ],
       ),
-    );
-    if (!pinned) return bar;
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        color: Color(0xFAFFFEFD),
-        border: Border(top: BorderSide(color: ClubColors.border)),
-      ),
-      child: SafeArea(top: false, child: bar),
     );
   }
 }
@@ -976,31 +1053,35 @@ class _Decision extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = filled ? ClubColors.paper : ClubColors.ink;
-    return Material(
-      color: filled ? ClubColors.ink : ClubColors.field,
-      shape: StadiumBorder(
-        side: BorderSide(color: filled ? ClubColors.ink : ClubColors.border),
-      ),
-      child: InkWell(
-        onTap: onPressed,
-        customBorder: const StadiumBorder(),
-        child: SizedBox(
-          height: 50,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              ClubIcon(icon, color: color),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: ClubType.inter(
-                  16,
-                  weight: FontWeight.w600,
-                  height: 1,
-                  color: color,
+    const radius = BorderRadius.all(Radius.circular(24));
+    return DecoratedBox(
+      decoration: filled
+          ? tintedPaint(enabled: true, radius: 24)
+          : const BoxDecoration(),
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: radius,
+          customBorder: const StadiumBorder(),
+          child: SizedBox(
+            height: 48,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ClubIcon(icon, color: color),
+                const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: ClubType.inter(
+                    16,
+                    weight: FontWeight.w600,
+                    height: 1,
+                    color: color,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -1065,34 +1146,28 @@ class _PhotoGridState extends State<PhotoGrid> {
                 Positioned(
                   top: 5,
                   right: 5,
-                  child: Material(
-                    color: Colors.white,
-                    shape: const CircleBorder(),
-                    child: InkWell(
-                      customBorder: const CircleBorder(),
-                      onTap: () =>
-                          setState(() => _count = (_count - 1).clamp(1, 6)),
-                      child: const SizedBox(
-                        width: 26,
-                        height: 26,
-                        child: Center(child: ClubIcon('close', size: 16)),
-                      ),
-                    ),
+                  child: GlassIconButton(
+                    icon: 'close',
+                    tooltip: 'Remove photo',
+                    size: 28,
+                    clear: true,
+                    onPressed: () =>
+                        setState(() => _count = (_count - 1).clamp(1, 6)),
                   ),
                 ),
               ],
             )
           else
-            Material(
-              color: ClubColors.field,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: const BorderSide(color: Color(0x731A1A1A)),
-              ),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: () => setState(() => _count = (_count + 1).clamp(1, 6)),
-                child: const Center(child: ClubIcon('plus')),
+            DecoratedBox(
+              decoration: glassPaint(radius: 20),
+              child: Material(
+                type: MaterialType.transparency,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(20),
+                  onTap: () =>
+                      setState(() => _count = (_count + 1).clamp(1, 6)),
+                  child: const Center(child: ClubIcon('plus')),
+                ),
               ),
             ),
       ],

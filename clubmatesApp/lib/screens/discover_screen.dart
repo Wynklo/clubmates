@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../club_icon.dart';
+import '../liquid_glass.dart';
 import '../mock_model.dart';
 import '../theme.dart';
 import '../widgets.dart';
@@ -13,12 +14,15 @@ class ClubScreen extends StatelessWidget {
     final model = MockScope.watch(context);
     if (model.profiles > 1) {
       return MainShell(
-        child: EmptyState(
-          title: 'No one nearby tonight.',
-          copy:
-              'New people show up as plans take shape. Check back a little later.',
-          action: 'Refresh',
-          onPressed: model.refreshClub,
+        child: Padding(
+          padding: EdgeInsets.only(bottom: ClubChrome.clearance(context)),
+          child: EmptyState(
+            title: 'No one nearby tonight.',
+            copy:
+                'New people show up as plans take shape. Check back a little later.',
+            action: 'Refresh',
+            onPressed: model.refreshClub,
+          ),
         ),
       );
     }
@@ -26,7 +30,7 @@ class ClubScreen extends StatelessWidget {
     final person = model.clubPerson;
     return MainShell(
       child: ListView(
-        padding: const EdgeInsets.only(bottom: 12),
+        padding: EdgeInsets.only(bottom: ClubChrome.clearance(context)),
         children: [
           const Padding(
             padding: EdgeInsets.fromLTRB(20, 12, 20, 8),
@@ -37,7 +41,7 @@ class ClubScreen extends StatelessWidget {
             child: GestureDetector(
               onTap: () => model.go(AppRoute.details),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(28),
                 child: SizedBox(
                   height: MediaQuery.sizeOf(context).height * 0.58,
                   child: Stack(
@@ -48,52 +52,48 @@ class ClubScreen extends StatelessWidget {
                         left: 10,
                         right: 10,
                         bottom: 10,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: const Color(0xC71A1A1A),
-                            borderRadius: BorderRadius.circular(11),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(12, 14, 12, 14),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  '${person.name}, ${person.age}',
-                                  style: ClubType.lora(
-                                    29,
-                                    color: Colors.white,
-                                    height: 1.1,
+                        child: LiquidGlass(
+                          role: GlassRole.clear,
+                          borderRadius: BorderRadius.circular(18),
+                          padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${person.name}, ${person.age}',
+                                style: ClubType.lora(
+                                  29,
+                                  color: Colors.white,
+                                  height: 1.1,
+                                ),
+                              ),
+                              const SizedBox(height: 5),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Expanded(
+                                    child: PlaceLine(
+                                      person.location,
+                                      onDark: true,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(height: 5),
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Expanded(
-                                      child: PlaceLine(
-                                        person.location,
-                                        onDark: true,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'View full profile',
-                                      style: ClubType.inter(
-                                        11,
-                                        color: Colors.white,
-                                        height: 1.2,
-                                      ),
-                                    ),
-                                    const ClubIcon(
-                                      'chevron',
-                                      size: 16,
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'View full profile',
+                                    style: ClubType.inter(
+                                      11,
                                       color: Colors.white,
+                                      height: 1.2,
                                     ),
-                                  ],
-                                ),
-                              ],
-                            ),
+                                  ),
+                                  const ClubIcon(
+                                    'chevron',
+                                    size: 16,
+                                    color: Colors.white,
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -117,10 +117,13 @@ class ClubScreen extends StatelessWidget {
               ],
             ),
           ),
-          ActionBar(
-            pinned: false,
-            onPass: model.passClub,
-            onInvite: () => model.go(AppRoute.inviteSent),
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: ActionBar(
+              onPass: model.passClub,
+              onInvite: () => model.go(AppRoute.inviteSent),
+            ),
           ),
         ],
       ),
