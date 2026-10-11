@@ -38,6 +38,7 @@ class _ClubmatesAppState extends State<ClubmatesApp> {
               AppRoute.splash => const SplashScreen(),
               AppRoute.phone => const PhoneScreen(),
               AppRoute.otp => const OtpScreen(),
+              AppRoute.interest => const InterestScreen(),
               AppRoute.name => const NameScreen(),
               AppRoute.dob => const DobScreen(),
               AppRoute.location => const LocationScreen(),

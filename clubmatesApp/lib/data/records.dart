@@ -41,6 +41,8 @@ class OwnPhoto {
   final String moderation;
 }
 
+const maxProfilePhotos = 3;
+
 class OwnAccount {
   const OwnAccount({
     required this.hasProfile,
@@ -53,6 +55,7 @@ class OwnAccount {
     required this.dateOfBirth,
     required this.discoverable,
     required this.onboardingCompleted,
+    required this.interestedIn,
   });
 
   final bool hasProfile;
@@ -65,6 +68,7 @@ class OwnAccount {
   final DateTime? dateOfBirth;
   final bool discoverable;
   final bool onboardingCompleted;
+  final String? interestedIn;
 
   static const empty = OwnAccount(
     hasProfile: false,
@@ -77,6 +81,7 @@ class OwnAccount {
     dateOfBirth: null,
     discoverable: true,
     onboardingCompleted: false,
+    interestedIn: null,
   );
 }
 
@@ -98,6 +103,114 @@ String? genderCode(String label) {
   for (final entry in genderLabels.entries) {
     if (entry.value == label) return entry.key;
   }
+  return null;
+}
+
+const interestLabels = {
+  'WOMAN': 'Women',
+  'MAN': 'Men',
+  'NON_BINARY': 'Non-binary',
+  'EVERYONE': 'Everyone',
+};
+
+String? interestCode(String label) {
+  for (final entry in interestLabels.entries) {
+    if (entry.value == label) return entry.key;
+  }
+  return null;
+}
+
+String digitsOnly(String value, int max) {
+  final digits = value.replaceAll(RegExp(r'\D'), '');
+  if (digits.length <= max) return digits;
+  return digits.substring(0, max);
+}
+
+/// Month, then date, then year. Incomplete fields explain what is still short.
+String? dobIssue(String day, String month, String year, {DateTime? today}) {
+  if (month.isNotEmpty && month.length != 2) {
+    return 'Month needs 2 digits, like 04.';
+  }
+  if (month.length == 2) {
+    final value = int.tryParse(month);
+    if (value == null || value < 1 || value > 12) {
+      return 'Month must be 01 to 12.';
+    }
+  }
+  if (day.isNotEmpty && day.length != 2) {
+    return 'Date needs 2 digits, like 12.';
+  }
+  if (day.length == 2) {
+    final value = int.tryParse(day);
+    if (value == null || value < 1 || value > 31) {
+      return 'Date must be 01 to 31.';
+    }
+  }
+  if (year.isNotEmpty && year.length != 4) {
+    return 'Year needs 4 digits, like 1998.';
+  }
+  if (day.length != 2 || month.length != 2 || year.length != 4) return null;
+  final parsed = parseDob(int.parse(day), int.parse(month), int.parse(year));
+  if (parsed == null) return 'That date does not exist.';
+  if (!isAtLeast18(parsed, today ?? DateTime.now())) {
+    return 'You need to be 18 or older.';
+  }
+  return null;
+}
+
+bool dobIsComplete(String day, String month, String year, {DateTime? today}) {
+  return day.length == 2 &&
+      month.length == 2 &&
+      year.length == 4 &&
+      dobIssue(day, month, year, today: today) == null;
+}
+
+String? nameIssue(String value, {bool required = false}) {
+  final trimmed = value.trim();
+  if (trimmed.isEmpty) return required ? 'Enter your name.' : null;
+  if (trimmed.length > 60) return 'Use a name up to 60 characters.';
+  if (!RegExp(r"^[A-Za-z][A-Za-z .'\-]{0,59}$").hasMatch(trimmed)) {
+    return 'Use letters only.';
+  }
+  return null;
+}
+
+String? phoneIssue(String digits) {
+  if (digits.isEmpty) return null;
+  if (!RegExp(r'^\d{10}$').hasMatch(digits)) {
+    return 'Enter a 10-digit mobile number.';
+  }
+  if (!RegExp(r'^[6-9]\d{9}$').hasMatch(digits)) {
+    return 'Enter a valid Indian mobile number.';
+  }
+  return null;
+}
+
+String? cityIssue(String value, {bool required = false}) {
+  final trimmed = value.trim();
+  if (trimmed.isEmpty) return required ? 'Enter a city.' : null;
+  if (trimmed.length > 100) return 'City should be 100 characters or less.';
+  if (!RegExp(r"^[A-Za-z][A-Za-z .'\-]{0,99}$").hasMatch(trimmed)) {
+    return 'Use letters for the city.';
+  }
+  return null;
+}
+
+String? heightIssue(String value) {
+  final trimmed = value.trim();
+  if (trimmed.isEmpty) return null;
+  if (!RegExp(r'^\d{2,3}$').hasMatch(trimmed)) {
+    return 'Height should be in centimetres, like 172.';
+  }
+  final cm = int.parse(trimmed);
+  if (cm < 100 || cm > 250) {
+    return 'Height should be between 100 and 250 cm.';
+  }
+  return null;
+}
+
+String? bioIssue(String value) {
+  if (value.trim().length > 500) return 'Bio should be 500 characters or less.';
   return null;
 }
 

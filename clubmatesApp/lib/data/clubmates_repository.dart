@@ -22,20 +22,30 @@ class ClubmatesRepository {
     return _db.auth.verifyOTP(phone: e164, token: token, type: OtpType.sms);
   }
 
-  /// Debug-only stand-in for 9999999999 / 111111 until SMS is enabled.
-  /// Pass the dev account password with --dart-define=DEV_LOGIN_PASSWORD=...
-  Future<void> signInDevPhone() {
-    if (!kDebugMode) {
-      throw const AuthException('Phone sign-in is not available yet.');
-    }
+  /// Test sign-in for any Indian mobile until SMS is enabled.
+  /// The code is always 111111. At most five new numbers can register.
+  /// Pass the shared test password with --dart-define=DEV_LOGIN_PASSWORD=...
+  Future<void> signInTestPhone(String phone) async {
     const password = String.fromEnvironment('DEV_LOGIN_PASSWORD');
     if (password.isEmpty) {
-      throw const AuthException('Dev sign-in is not configured.');
+      throw const AuthException('Phone sign-in is not available yet.');
     }
-    return _db.auth.signInWithPassword(
-      email: '9999999999@clubmates.dev',
-      password: password,
-    );
+    final email = '$phone@clubmates.dev';
+    try {
+      await _db.auth.signInWithPassword(email: email, password: password);
+      return;
+    } on AuthException {
+      // A new number has no account yet.
+    }
+    final slots = await _db.rpc('test_phone_slots');
+    if (slots is num && slots <= 0) {
+      throw const AuthException(
+        'Only 5 test numbers can register. Sign in with one you already used.',
+      );
+    }
+    final created = await _db.auth.signUp(email: email, password: password);
+    if (created.session != null) return;
+    await _db.auth.signInWithPassword(email: email, password: password);
   }
 
   Future<void> signOut() => _db.auth.signOut();
@@ -49,7 +59,9 @@ class ClubmatesRepository {
         .maybeSingle();
     final private = await _db
         .from('user_private')
-        .select('date_of_birth, discoverable, onboarding_completed')
+        .select(
+          'date_of_birth, discoverable, onboarding_completed, interested_in',
+        )
         .eq('user_id', uid)
         .maybeSingle();
     if (profile == null) return OwnAccount.empty;
@@ -66,6 +78,7 @@ class ClubmatesRepository {
           : DateTime.parse(private['date_of_birth'] as String),
       discoverable: private == null || private['discoverable'] != false,
       onboardingCompleted: private?['onboarding_completed'] == true,
+      interestedIn: private?['interested_in'] as String?,
     );
   }
 
@@ -96,11 +109,12 @@ class ClubmatesRepository {
     return _db.from('profiles').update(fields).eq('id', _uid);
   }
 
-  Future<void> createPrivate(DateTime dob) {
+  Future<void> createPrivate(DateTime dob, {String? interestedIn}) {
     final iso = _isoDate(dob);
     return _db.from('user_private').insert({
       'user_id': _uid,
       'date_of_birth': iso,
+      'interested_in': ?interestedIn,
     });
   }
 
@@ -108,6 +122,7 @@ class ClubmatesRepository {
     DateTime? dob,
     bool? discoverable,
     bool? onboardingCompleted,
+    String? interestedIn,
   }) {
     final iso = dob == null ? null : _isoDate(dob);
     return _db
@@ -116,6 +131,7 @@ class ClubmatesRepository {
           'date_of_birth': ?iso,
           'discoverable': ?discoverable,
           'onboarding_completed': ?onboardingCompleted,
+          'interested_in': ?interestedIn,
         })
         .eq('user_id', _uid);
   }
@@ -150,8 +166,8 @@ class ClubmatesRepository {
         .from('profile_photos')
         .select('display_order')
         .eq('user_id', _uid);
-    if (existing.length >= 6) {
-      throw const AuthException('You can add up to 6 photos.');
+    if (existing.length >= maxProfilePhotos) {
+      throw const AuthException('You can add up to 3 photos.');
     }
     final used = existing
         .map((row) => (row['display_order'] as num).toInt())

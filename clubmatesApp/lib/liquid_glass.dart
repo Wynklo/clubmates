@@ -10,10 +10,17 @@ import 'theme.dart';
 enum GlassRole { regular, clear }
 
 abstract final class ClubChrome {
-  static const navHeight = 62.0;
+  static const navHeight = 66.0;
+
+  /// Space between a bottom control and the physical screen edge.
+  /// Keeps the home indicator visible underneath floating bars and buttons.
+  static double barGap(BuildContext context) {
+    final safe = MediaQuery.paddingOf(context).bottom;
+    return safe > 0 ? safe + 10 : 16;
+  }
 
   static double clearance(BuildContext context) {
-    return MediaQuery.paddingOf(context).bottom + navHeight + 28;
+    return barGap(context) + navHeight + 18;
   }
 
   static bool reduceTransparency(BuildContext context) {

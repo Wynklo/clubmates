@@ -1,16 +1,30 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'data/clubmates_repository.dart';
 import 'data/records.dart';
+export 'data/records.dart'
+    show
+        bioIssue,
+        cityIssue,
+        dobIsComplete,
+        dobIssue,
+        heightIssue,
+        interestCode,
+        interestLabels,
+        maxProfilePhotos,
+        nameIssue,
+        OwnPhoto,
+        phoneIssue;
 import 'data/supabase_config.dart';
 
 enum AppRoute {
   splash,
   phone,
   otp,
+  interest,
   name,
   dob,
   location,
@@ -148,7 +162,9 @@ class MockModel extends ChangeNotifier {
   DateTime? _dob;
 
   AppRoute route = AppRoute.splash;
-  String phone = kDebugMode ? '9999999999' : '';
+  static const _devPassword = String.fromEnvironment('DEV_LOGIN_PASSWORD');
+
+  String phone = '';
   List<String> otp = List.filled(6, '');
   bool otpError = false;
   String name = '';
@@ -160,6 +176,11 @@ class MockModel extends ChangeNotifier {
   String height = '';
   List<String> interests = ['Drinks', 'Live Music', 'Dinner'];
   String sex = 'Woman';
+  String lookingFor = '';
+  String? _interestedIn;
+  bool _hasGender = false;
+  bool _hasCity = false;
+  bool _onboardingComplete = false;
   String idType = 'Aadhaar';
   bool uploaded = false;
   bool discoverable = true;
@@ -186,6 +207,9 @@ class MockModel extends ChangeNotifier {
 
   MockPerson? get clubPerson {
     if (!live) {
+      if (_interestedIn == 'MAN') return profiles == 0 ? kabir : null;
+      if (_interestedIn == 'WOMAN') return profiles == 0 ? meera : null;
+      if (_interestedIn == 'NON_BINARY') return null;
       if (profiles > 1) return null;
       return profiles == 0 ? meera : kabir;
     }
@@ -229,10 +253,17 @@ class MockModel extends ChangeNotifier {
 
   void go(AppRoute next) {
     route = next;
+    errorMessage = null;
     notifyListeners();
   }
 
   void goTab(AppTab next) {
+    _lensFrom = switch (tab) {
+      AppTab.club => 0,
+      AppTab.likes => 1,
+      AppTab.mates => 2,
+      AppTab.profile => 3,
+    };
     route = switch (next) {
       AppTab.club => AppRoute.club,
       AppTab.likes => AppRoute.likes,
@@ -241,6 +272,10 @@ class MockModel extends ChangeNotifier {
     };
     notifyListeners();
   }
+
+  int _lensFrom = 0;
+
+  int get lensFrom => _lensFrom;
 
   Future<void> start() async {
     if (!live || !_api.hasSession) {
@@ -261,8 +296,8 @@ class MockModel extends ChangeNotifier {
   }
 
   void setPhone(String value) {
-    final digits = value.replaceAll(RegExp(r'\D'), '');
-    phone = digits.length > 10 ? digits.substring(0, 10) : digits;
+    phone = digitsOnly(value, 10);
+    errorMessage = phoneIssue(phone);
     notifyListeners();
   }
 
@@ -274,14 +309,20 @@ class MockModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  bool get _devPhone => live && kDebugMode && phone == '9999999999';
+  bool get testLogin => live && _devPassword.isNotEmpty;
 
   Future<void> sendCode({bool resend = false}) async {
+    final issue = phoneIssue(phone);
+    if (issue != null || phone.length != 10) {
+      errorMessage = issue ?? 'Enter a 10-digit mobile number.';
+      notifyListeners();
+      return;
+    }
     if (!live) {
       go(AppRoute.otp);
       return;
     }
-    if (_devPhone) {
+    if (testLogin) {
       otp = List.filled(6, '1');
       otpError = false;
       errorMessage = null;
@@ -296,7 +337,7 @@ class MockModel extends ChangeNotifier {
   }
 
   Future<void> verifyOtp() async {
-    if (_devPhone) {
+    if (testLogin) {
       if (otp.join() != '111111') {
         otpError = true;
         errorMessage = null;
@@ -304,7 +345,7 @@ class MockModel extends ChangeNotifier {
         return;
       }
       final ok = await _guard(() async {
-        await _api.signInDevPhone();
+        await _api.signInTestPhone(phone);
         await _resume();
       });
       if (!ok) {
@@ -319,7 +360,7 @@ class MockModel extends ChangeNotifier {
         notifyListeners();
         return;
       }
-      go(AppRoute.name);
+      go(AppRoute.interest);
       return;
     }
     final ok = await _guard(() async {
@@ -334,16 +375,18 @@ class MockModel extends ChangeNotifier {
 
   void setName(String value) {
     name = value;
+    errorMessage = nameIssue(value);
     notifyListeners();
   }
 
   Future<void> saveName() async {
-    final trimmed = name.trim();
-    if (trimmed.isEmpty || trimmed.length > 60) {
-      errorMessage = 'Use a name up to 60 characters.';
+    final issue = nameIssue(name, required: true);
+    if (issue != null) {
+      errorMessage = issue;
       notifyListeners();
       return;
     }
+    final trimmed = name.trim();
     if (!live) {
       go(AppRoute.dob);
       return;
@@ -361,30 +404,23 @@ class MockModel extends ChangeNotifier {
   }
 
   void setDobPart({String? nextDay, String? nextMonth, String? nextYear}) {
-    if (nextDay != null) day = nextDay;
-    if (nextMonth != null) month = nextMonth;
-    if (nextYear != null) year = nextYear;
+    if (nextDay != null) day = digitsOnly(nextDay, 2);
+    if (nextMonth != null) month = digitsOnly(nextMonth, 2);
+    if (nextYear != null) year = digitsOnly(nextYear, 4);
+    errorMessage = dobIssue(day, month, year);
     notifyListeners();
   }
 
-  bool get dobReady => day.isNotEmpty && month.isNotEmpty && year.length == 4;
+  bool get dobReady => dobIsComplete(day, month, year);
 
   Future<void> saveDob() async {
-    final dob = parseDob(
-      int.tryParse(day) ?? 0,
-      int.tryParse(month) ?? 0,
-      int.tryParse(year) ?? 0,
-    );
-    if (dob == null) {
-      errorMessage = 'Enter a real date.';
+    final issue = dobIssue(day, month, year);
+    if (issue != null) {
+      errorMessage = issue;
       notifyListeners();
       return;
     }
-    if (!isAtLeast18(dob, DateTime.now())) {
-      errorMessage = 'You need to be 18 or older.';
-      notifyListeners();
-      return;
-    }
+    final dob = parseDob(int.parse(day), int.parse(month), int.parse(year))!;
     if (!live) {
       _dob = dob;
       go(AppRoute.location);
@@ -394,7 +430,7 @@ class MockModel extends ChangeNotifier {
       if (_hasPrivate) {
         await _api.updatePrivate(dob: dob);
       } else {
-        await _api.createPrivate(dob);
+        await _api.createPrivate(dob, interestedIn: _interestedIn);
         _hasPrivate = true;
       }
       _dob = dob;
@@ -404,23 +440,27 @@ class MockModel extends ChangeNotifier {
 
   void setLocation(String value) {
     location = value;
+    errorMessage = cityIssue(value);
     notifyListeners();
   }
 
   Future<void> saveCity() async {
-    final city = location.trim();
-    if (city.isEmpty || city.length > 100) {
-      errorMessage = 'Enter a city.';
+    final issue = cityIssue(location, required: true);
+    if (issue != null) {
+      errorMessage = issue;
       notifyListeners();
       return;
     }
+    final city = location.trim();
     if (!live) {
+      _hasCity = true;
       go(AppRoute.nightlife);
       return;
     }
     await _guard(() async {
       await _api.updateProfile(city: city);
       location = city;
+      _hasCity = true;
       go(AppRoute.nightlife);
     });
   }
@@ -437,40 +477,70 @@ class MockModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setLookingFor(String value) {
+    lookingFor = value;
+    _interestedIn = interestCode(value);
+    errorMessage = null;
+    notifyListeners();
+  }
+
+  Future<void> saveInterest() async {
+    final code = interestCode(lookingFor);
+    if (code == null) {
+      errorMessage = 'Choose who you want to meet.';
+      notifyListeners();
+      return;
+    }
+    _interestedIn = code;
+    if (!live) {
+      await _openNextStep();
+      return;
+    }
+    await _guard(() async {
+      if (_hasPrivate) await _api.updatePrivate(interestedIn: code);
+      await _openNextStep();
+    });
+  }
+
   void setHeight(String value) {
-    height = value;
+    height = digitsOnly(value, 3);
+    errorMessage = heightIssue(height);
     notifyListeners();
   }
 
   void setBio(String value) {
     bio = value;
+    errorMessage = bioIssue(value);
     notifyListeners();
   }
 
   Future<void> saveAbout() async {
     final code = genderCode(sex);
-    int? cm;
     final typed = height.trim();
-    if (typed.isNotEmpty) {
-      cm = int.tryParse(typed);
-      if (cm == null || cm < 100 || cm > 250) {
-        errorMessage = 'Height should be between 100 and 250 cm.';
-        notifyListeners();
-        return;
-      }
+    if (heightIssue(typed) != null) {
+      errorMessage = heightIssue(typed);
+      notifyListeners();
+      return;
     }
+    final cm = typed.isEmpty ? null : int.parse(typed);
     if (!live) {
+      _hasGender = code != null;
       go(AppRoute.photos);
       return;
     }
     await _guard(() async {
       await _api.updateProfile(gender: code, heightCm: cm);
+      _hasGender = code != null;
       go(AppRoute.photos);
     });
   }
 
   Future<void> pickPhoto({required bool camera}) async {
-    if (!live) return;
+    if (ownPhotos.length >= maxProfilePhotos) {
+      errorMessage = 'You can add up to 3 photos.';
+      notifyListeners();
+      return;
+    }
     try {
       final file = await _picker.pickImage(
         source: camera ? ImageSource.camera : ImageSource.gallery,
@@ -478,11 +548,36 @@ class MockModel extends ChangeNotifier {
         imageQuality: 80,
       );
       if (file == null) return;
+      if (!live) {
+        ownPhotos = [
+          ...ownPhotos,
+          OwnPhoto(
+            id: 'local-${DateTime.now().microsecondsSinceEpoch}',
+            path: file.path,
+            url: file.path,
+            order: ownPhotos.length + 1,
+            primary: ownPhotos.isEmpty,
+            moderation: 'LOCAL',
+          ),
+        ];
+        errorMessage = null;
+        notifyListeners();
+        return;
+      }
       final bytes = await file.readAsBytes();
       await _guard(() async {
         await _api.uploadPhoto(bytes);
         ownPhotos = await _api.loadOwnPhotos();
       });
+    } on PlatformException catch (error) {
+      errorMessage = switch (error.code) {
+        'camera_access_denied' || 'camera_access_restricted' =>
+          'Allow camera access to take a photo. You can turn it on in Settings.',
+        'photo_access_denied' || 'photo_access_restricted' =>
+          'Allow photo access to add a picture. You can turn it on in Settings.',
+        _ => error.message ?? 'Could not open your photos.',
+      };
+      notifyListeners();
     } catch (error) {
       errorMessage = _message(error);
       notifyListeners();
@@ -490,7 +585,22 @@ class MockModel extends ChangeNotifier {
   }
 
   Future<void> removePhoto(OwnPhoto photo) async {
-    if (!live) return;
+    if (!live) {
+      final next = ownPhotos.where((item) => item.id != photo.id).toList();
+      ownPhotos = [
+        for (var i = 0; i < next.length; i++)
+          OwnPhoto(
+            id: next[i].id,
+            path: next[i].path,
+            url: next[i].url,
+            order: i + 1,
+            primary: photo.primary ? i == 0 : next[i].primary,
+            moderation: next[i].moderation,
+          ),
+      ];
+      notifyListeners();
+      return;
+    }
     await _guard(() async {
       await _api.deletePhoto(photo);
       ownPhotos = await _api.loadOwnPhotos();
@@ -498,7 +608,22 @@ class MockModel extends ChangeNotifier {
   }
 
   Future<void> makePrimary(OwnPhoto photo) async {
-    if (!live || photo.primary) return;
+    if (photo.primary) return;
+    if (!live) {
+      ownPhotos = [
+        for (final item in ownPhotos)
+          OwnPhoto(
+            id: item.id,
+            path: item.path,
+            url: item.url,
+            order: item.order,
+            primary: item.id == photo.id,
+            moderation: item.moderation,
+          ),
+      ];
+      notifyListeners();
+      return;
+    }
     await _guard(() async {
       await _api.makePrimary(photo);
       ownPhotos = await _api.loadOwnPhotos();
@@ -522,6 +647,7 @@ class MockModel extends ChangeNotifier {
     }
     await _guard(() async {
       await _api.updatePrivate(onboardingCompleted: true);
+      _onboardingComplete = true;
       await _loadPeople();
       go(AppRoute.club);
     });
@@ -652,23 +778,24 @@ class MockModel extends ChangeNotifier {
     required String nextBio,
     required String nextCity,
   }) async {
+    final nameError = nameIssue(nextName, required: true);
+    final cityError = cityIssue(nextCity, required: true);
+    final aboutError = bioIssue(nextBio);
+    final stature = heightIssue(height);
+    final issue = nameError ?? cityError ?? aboutError ?? stature;
+    if (issue != null) {
+      errorMessage = issue;
+      notifyListeners();
+      return;
+    }
     final trimmedName = nextName.trim();
     final trimmedCity = nextCity.trim();
     final trimmedBio = nextBio.trim();
-    if (trimmedName.isEmpty || trimmedName.length > 60) {
-      errorMessage = 'Use a name up to 60 characters.';
-      notifyListeners();
-      return;
-    }
-    if (trimmedBio.length > 500) {
-      errorMessage = 'Bio should be 500 characters or less.';
-      notifyListeners();
-      return;
-    }
     if (!live) {
       name = trimmedName;
       location = trimmedCity.isEmpty ? location : trimmedCity;
       bio = trimmedBio;
+      _interestedIn = interestCode(lookingFor) ?? _interestedIn;
       go(AppRoute.profile);
       return;
     }
@@ -679,10 +806,18 @@ class MockModel extends ChangeNotifier {
         clearBio: true,
         city: trimmedCity,
         gender: genderCode(sex),
+        heightCm: height.trim().isEmpty ? null : int.parse(height.trim()),
       );
+      final chosen = interestCode(lookingFor);
+      if (_hasPrivate && chosen != null) {
+        await _api.updatePrivate(interestedIn: chosen);
+        _interestedIn = chosen;
+      }
       name = trimmedName;
       location = trimmedCity;
       bio = trimmedBio;
+      _hasCity = trimmedCity.isNotEmpty;
+      await _loadPeople();
       go(AppRoute.profile);
     });
   }
@@ -716,23 +851,31 @@ class MockModel extends ChangeNotifier {
     final account = await _api.loadAccount();
     _applyAccount(account);
     ownPhotos = account.hasProfile ? await _api.loadOwnPhotos() : [];
-    if (!account.hasProfile) {
+    await _openNextStep();
+  }
+
+  Future<void> _openNextStep() async {
+    if (_interestedIn == null) {
+      go(AppRoute.interest);
+      return;
+    }
+    if (!_hasProfile) {
       go(AppRoute.name);
       return;
     }
-    if (account.dateOfBirth == null) {
+    if (_dob == null) {
       go(AppRoute.dob);
       return;
     }
-    if (account.city.trim().isEmpty) {
+    if (!_hasCity) {
       go(AppRoute.location);
       return;
     }
-    if (account.gender == null) {
+    if (!_hasGender) {
       go(AppRoute.about);
       return;
     }
-    if (!account.onboardingCompleted) {
+    if (!_onboardingComplete) {
       go(AppRoute.photos);
       return;
     }
@@ -760,9 +903,16 @@ class MockModel extends ChangeNotifier {
   void _applyAccount(OwnAccount account) {
     _hasProfile = account.hasProfile;
     _hasPrivate = account.dateOfBirth != null;
+    _hasGender = account.gender != null;
+    _hasCity = account.city.trim().isNotEmpty;
+    _onboardingComplete = account.onboardingCompleted;
+    _interestedIn = account.interestedIn ?? _interestedIn;
     _verified = account.verified;
     _dob = account.dateOfBirth;
     discoverable = account.discoverable;
+    if (account.interestedIn != null) {
+      lookingFor = interestLabels[account.interestedIn] ?? lookingFor;
+    }
     if (account.displayName.isNotEmpty) name = account.displayName;
     bio = account.bio;
     if (account.city.isNotEmpty) location = account.city;
@@ -804,11 +954,16 @@ class MockModel extends ChangeNotifier {
     month = '';
     year = '';
     location = 'Bengaluru';
+    lookingFor = '';
     bio = '';
     height = '';
     _dob = null;
     _hasProfile = false;
     _hasPrivate = false;
+    _hasGender = false;
+    _hasCity = false;
+    _onboardingComplete = false;
+    _interestedIn = null;
     _verified = false;
     ownPhotos = [];
     blocked = [];

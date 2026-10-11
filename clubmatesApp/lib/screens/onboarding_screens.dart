@@ -123,12 +123,14 @@ class _PhoneScreenState extends State<PhoneScreen> {
     final model = MockScope.watch(context);
     return OnboardingFrame(
       title: "What's your number?",
-      supporting: "We'll text you a code.",
+      supporting: model.testLogin
+          ? 'Any Indian number. The test code is 111111.'
+          : "We'll text you a code.",
       error: model.errorMessage,
       onBack: () => model.go(AppRoute.splash),
       footer: PrimaryButton(
         'Continue',
-        onPressed: model.busy || model.phone.length != 10
+        onPressed: model.busy || phoneIssue(model.phone) != null
             ? null
             : () => model.sendCode(),
       ),
@@ -152,7 +154,9 @@ class OtpScreen extends StatelessWidget {
         : '+91 98765 43210';
     return OnboardingFrame(
       title: 'Enter the code',
-      supporting: 'Sent to $sentTo',
+      supporting: model.testLogin
+          ? 'Enter 111111 to continue.'
+          : 'Sent to $sentTo',
       error: model.errorMessage,
       onBack: () => model.go(AppRoute.phone),
       headerAction: TextLink(
@@ -177,6 +181,40 @@ class OtpScreen extends StatelessWidget {
         ],
         const SizedBox(height: 4),
         const Align(alignment: Alignment.centerLeft, child: _ResendCode()),
+      ],
+    );
+  }
+}
+
+class InterestScreen extends StatelessWidget {
+  const InterestScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final model = MockScope.watch(context);
+    return OnboardingFrame(
+      title: 'Who do you want to meet?',
+      supporting: 'Club shows people of the gender you choose.',
+      error: model.errorMessage,
+      progress: 1,
+      onBack: () => model.go(AppRoute.otp),
+      footer: PrimaryButton(
+        'Continue',
+        onPressed: model.busy || interestCode(model.lookingFor) == null
+            ? null
+            : model.saveInterest,
+      ),
+      children: [
+        ChipWrap(
+          children: [
+            for (final option in interestLabels.values)
+              ChoiceChipButton(
+                option,
+                selected: model.lookingFor == option,
+                onPressed: () => model.setLookingFor(option),
+              ),
+          ],
+        ),
       ],
     );
   }
@@ -211,11 +249,11 @@ class _NameScreenState extends State<NameScreen> {
       title: 'Your name',
       supporting: 'What should people call you?',
       error: model.errorMessage,
-      progress: 1,
-      onBack: () => model.go(AppRoute.otp),
+      progress: 2,
+      onBack: () => model.go(AppRoute.interest),
       footer: PrimaryButton(
         'Continue',
-        onPressed: model.busy || model.name.trim().isEmpty
+        onPressed: model.busy || nameIssue(model.name, required: true) != null
             ? null
             : model.saveName,
       ),
@@ -238,35 +276,119 @@ class DobScreen extends StatefulWidget {
 }
 
 class _DobScreenState extends State<DobScreen> {
-  late final TextEditingController _day;
-  late final TextEditingController _month;
-  late final TextEditingController _year;
+  static const _marker = '\u200b';
+  static const _limits = [2, 2, 4];
+
+  late final List<TextEditingController> _controllers;
+  late final List<FocusNode> _nodes;
+  late final List<String> _digits;
+  var _editing = false;
 
   @override
   void initState() {
     super.initState();
     final model = MockScope.read(context);
-    _day = TextEditingController(text: model.day);
-    _month = TextEditingController(text: model.month);
-    _year = TextEditingController(text: model.year);
+    _digits = [model.month, model.day, model.year];
+    _controllers = [
+      for (final digits in _digits) TextEditingController(text: _shown(digits)),
+    ];
+    _nodes = List.generate(3, (_) => FocusNode());
   }
 
   @override
   void dispose() {
-    _day.dispose();
-    _month.dispose();
-    _year.dispose();
+    for (final controller in _controllers) {
+      controller.dispose();
+    }
+    for (final node in _nodes) {
+      node.dispose();
+    }
     super.dispose();
+  }
+
+  String _shown(String digits) => digits.isEmpty ? _marker : digits;
+
+  void _show(int index, String digits) {
+    final text = _shown(digits);
+    final controller = _controllers[index];
+    if (controller.text == text) return;
+    _editing = true;
+    controller.value = TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+    );
+    _editing = false;
+  }
+
+  void _commit(int index, String digits) {
+    _digits[index] = digits;
+    final model = MockScope.read(context);
+    switch (index) {
+      case 0:
+        model.setDobPart(nextMonth: digits);
+      case 1:
+        model.setDobPart(nextDay: digits);
+      case 2:
+        model.setDobPart(nextYear: digits);
+    }
+  }
+
+  void _onChanged(int index, String raw) {
+    if (_editing) return;
+    final before = _digits[index];
+    final typed = raw.replaceAll(_marker, '').replaceAll(RegExp(r'\D'), '');
+    if (typed.isEmpty) {
+      _commit(index, '');
+      _show(index, '');
+      if (before.isNotEmpty || index == 0) return;
+      final previous = _digits[index - 1];
+      final trimmed = previous.isEmpty
+          ? ''
+          : previous.substring(0, previous.length - 1);
+      _commit(index - 1, trimmed);
+      _show(index - 1, trimmed);
+      _nodes[index - 1].requestFocus();
+      return;
+    }
+    if (typed.length <= _limits[index]) {
+      _commit(index, typed);
+      _show(index, typed);
+      if (typed.length == _limits[index] && index < 2) {
+        _nodes[index + 1].requestFocus();
+      }
+      return;
+    }
+    final keep = typed.substring(0, _limits[index]);
+    final extra = typed.substring(_limits[index]);
+    _commit(index, keep);
+    _show(index, keep);
+    if (index == 2) return;
+    if (_digits[index + 1].isEmpty) {
+      _onChanged(index + 1, extra);
+      return;
+    }
+    _nodes[index + 1].requestFocus();
+  }
+
+  void _selectBox(int index) {
+    final text = _controllers[index].text;
+    if (text.isEmpty || text == _marker) return;
+    _controllers[index].selection = TextSelection(
+      baseOffset: 0,
+      extentOffset: text.length,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final model = MockScope.watch(context);
+    const labels = ['Month', 'Date', 'Year'];
+    const hints = ['04', '12', '1998'];
     return OnboardingFrame(
       title: 'When were you born?',
-      supporting: 'You need to be 18 or older.',
+      supporting: 'Month, date, then year. You need to be 18 or older.',
       error: model.errorMessage,
-      progress: 2,
+      progress: 3,
       onBack: () => model.go(AppRoute.name),
       footer: PrimaryButton(
         'Continue',
@@ -274,40 +396,29 @@ class _DobScreenState extends State<DobScreen> {
       ),
       children: [
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              flex: 7,
-              child: ClubField(
-                hint: 'DD',
-                controller: _day,
-                keyboardType: TextInputType.number,
-                onChanged: (value) => model.setDobPart(nextDay: value),
+            for (var i = 0; i < 3; i++) ...[
+              if (i > 0) const SizedBox(width: 10),
+              Expanded(
+                flex: i == 2 ? 2 : 1,
+                child: ClubField(
+                  label: labels[i],
+                  hint: hints[i],
+                  controller: _controllers[i],
+                  focusNode: _nodes[i],
+                  autofocus: i == 0,
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  onChanged: (value) => _onChanged(i, value),
+                  onTap: () => _selectBox(i),
+                ),
               ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              flex: 7,
-              child: ClubField(
-                hint: 'MM',
-                controller: _month,
-                keyboardType: TextInputType.number,
-                onChanged: (value) => model.setDobPart(nextMonth: value),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              flex: 13,
-              child: ClubField(
-                hint: 'YYYY',
-                controller: _year,
-                keyboardType: TextInputType.number,
-                onChanged: (value) => model.setDobPart(nextYear: value),
-              ),
-            ),
+            ],
           ],
         ),
         const SizedBox(height: 12),
-        const Note('Your age will be visible on your profile.'),
+        const Note('Example: 04 / 12 / 1998. Only your age is shown.'),
       ],
     );
   }
@@ -342,11 +453,14 @@ class _LocationScreenState extends State<LocationScreen> {
       title: 'Where are you?',
       supporting: "We'll show you people heading out nearby.",
       error: model.errorMessage,
-      progress: 3,
+      progress: 4,
       onBack: () => model.go(AppRoute.dob),
       footer: PrimaryButton(
         'Continue',
-        onPressed: model.busy ? null : model.saveCity,
+        onPressed:
+            model.busy || cityIssue(model.location, required: true) != null
+            ? null
+            : model.saveCity,
       ),
       children: [
         ClubField(
@@ -384,7 +498,7 @@ class NightlifeScreen extends StatelessWidget {
     return OnboardingFrame(
       title: 'What kind of night are you after?',
       supporting: "Tell people what you're usually up for.",
-      progress: 4,
+      progress: 5,
       onBack: () => model.go(AppRoute.location),
       footer: PrimaryButton(
         'Continue',
@@ -446,11 +560,13 @@ class _AboutScreenState extends State<AboutScreen> {
     return OnboardingFrame(
       title: 'A bit about you',
       error: model.errorMessage,
-      progress: 5,
+      progress: 6,
       onBack: () => model.go(AppRoute.nightlife),
       footer: PrimaryButton(
         'Continue',
-        onPressed: model.busy ? null : model.saveAbout,
+        onPressed: model.busy || heightIssue(model.height) != null
+            ? null
+            : model.saveAbout,
       ),
       children: [
         const Eyebrow('Sex'),
@@ -469,9 +585,13 @@ class _AboutScreenState extends State<AboutScreen> {
         const Eyebrow('Height'),
         const SizedBox(height: 12),
         ClubField(
-          hint: '172 cm',
+          hint: '172',
           controller: _height,
           keyboardType: TextInputType.number,
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            LengthLimitingTextInputFormatter(3),
+          ],
           onChanged: model.setHeight,
         ),
       ],
@@ -487,13 +607,13 @@ class PhotosScreen extends StatelessWidget {
     final model = MockScope.watch(context);
     return OnboardingFrame(
       title: 'Add your photos',
-      supporting: 'Your first photo is the one people see.',
+      supporting: 'Add up to 3 photos. The first one is the one people see.',
       error: model.errorMessage,
-      progress: 6,
+      progress: 7,
       onBack: () => model.go(AppRoute.about),
       footer: PrimaryButton(
         'Continue',
-        onPressed: model.busy || (model.live && model.ownPhotos.isEmpty)
+        onPressed: model.busy || model.ownPhotos.isEmpty
             ? null
             : () => model.go(AppRoute.identity),
       ),
@@ -541,7 +661,7 @@ class IdentityScreen extends StatelessWidget {
     return OnboardingFrame(
       title: 'Verify your identity',
       supporting: 'Verification helps keep Clubmates real.',
-      progress: 7,
+      progress: 8,
       onBack: () => model.go(AppRoute.photos),
       footer: PrimaryButton(
         'Continue',

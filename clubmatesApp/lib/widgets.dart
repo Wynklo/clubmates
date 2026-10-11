@@ -1,3 +1,7 @@
+import 'dart:io';
+
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -44,9 +48,12 @@ class PrimaryButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final enabled = onPressed != null;
-    const radius = BorderRadius.all(Radius.circular(25));
+    const radius = BorderRadius.all(Radius.circular(28));
     return DecoratedBox(
-      decoration: tintedPaint(enabled: enabled, radius: 25),
+      decoration: BoxDecoration(
+        color: enabled ? ClubColors.ink : ClubColors.disabledFill,
+        borderRadius: radius,
+      ),
       child: Material(
         type: MaterialType.transparency,
         child: InkWell(
@@ -90,9 +97,15 @@ class SecondaryButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = foreground ?? ClubColors.ink;
-    const radius = BorderRadius.all(Radius.circular(25));
+    const radius = BorderRadius.all(Radius.circular(28));
     return DecoratedBox(
-      decoration: glassPaint(radius: 25),
+      decoration: BoxDecoration(
+        color: ClubColors.field,
+        borderRadius: radius,
+        border: Border.all(
+          color: onPressed == null ? ClubColors.disabledLine : ClubColors.ink,
+        ),
+      ),
       child: Material(
         type: MaterialType.transparency,
         child: InkWell(
@@ -186,68 +199,89 @@ class ClubField extends StatelessWidget {
     this.label,
     required this.hint,
     this.controller,
+    this.focusNode,
     this.onChanged,
+    this.onTap,
     this.keyboardType,
     this.inputFormatters,
     this.maxLines = 1,
+    this.error,
+    this.textAlign = TextAlign.start,
+    this.autofocus = false,
   });
 
   final String? label;
   final String hint;
   final TextEditingController? controller;
+  final FocusNode? focusNode;
   final ValueChanged<String>? onChanged;
+  final VoidCallback? onTap;
   final TextInputType? keyboardType;
   final List<TextInputFormatter>? inputFormatters;
   final int maxLines;
+  final String? error;
+  final TextAlign textAlign;
+  final bool autofocus;
 
   @override
   Widget build(BuildContext context) {
+    final invalid = error != null && error!.isNotEmpty;
+    final radius = BorderRadius.circular(14);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (label != null) ...[
-          Text(label!.toUpperCase(), style: ClubType.eyebrow),
+          Text(label!, style: ClubType.inter(14, weight: FontWeight.w600)),
           const SizedBox(height: 8),
         ],
-        DecoratedBox(
-          decoration: glassPaint(radius: maxLines == 1 ? 25 : 22),
-          child: TextField(
-            controller: controller,
-            onChanged: onChanged,
-            keyboardType: keyboardType,
-            inputFormatters: inputFormatters,
-            maxLines: maxLines,
-            style: ClubType.inter(16, height: 1.3),
-            cursorColor: ClubColors.brand,
-            decoration: InputDecoration(
-              hintText: hint,
-              hintStyle: ClubType.inter(
-                16,
-                color: ClubColors.disabled,
-                height: 1.3,
+        TextField(
+          controller: controller,
+          focusNode: focusNode,
+          autofocus: autofocus,
+          onChanged: onChanged,
+          onTap: onTap,
+          keyboardType: keyboardType,
+          inputFormatters: inputFormatters,
+          maxLines: maxLines,
+          textAlign: textAlign,
+          style: ClubType.inter(17, height: 1.3),
+          cursorColor: ClubColors.ink,
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: ClubType.inter(
+              17,
+              color: ClubColors.disabled,
+              height: 1.3,
+            ),
+            filled: true,
+            fillColor: ClubColors.field,
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: maxLines > 1 ? 14 : 16,
+            ),
+            constraints: maxLines == 1
+                ? const BoxConstraints(minHeight: 56)
+                : const BoxConstraints(minHeight: 96),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: radius,
+              borderSide: BorderSide(
+                color: invalid ? ClubColors.error : ClubColors.border,
               ),
-              filled: false,
-              border: InputBorder.none,
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: maxLines > 1 ? 14 : 14,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: radius,
+              borderSide: BorderSide(
+                color: invalid ? ClubColors.error : ClubColors.ink,
+                width: 1.5,
               ),
-              constraints: maxLines == 1
-                  ? const BoxConstraints(minHeight: 50)
-                  : const BoxConstraints(minHeight: 96),
-              enabledBorder: _border(Colors.transparent),
-              focusedBorder: _border(ClubColors.brand, width: 1.5),
             ),
           ),
         ),
+        if (invalid) ...[
+          const SizedBox(height: 6),
+          Text(error!, style: ClubType.inter(13, color: ClubColors.error)),
+        ],
       ],
-    );
-  }
-
-  OutlineInputBorder _border(Color color, {double width = 1}) {
-    return OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: BorderSide(color: color, width: width),
     );
   }
 }
@@ -261,8 +295,12 @@ class PhoneField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 50,
-      decoration: glassPaint(radius: 25),
+      height: 56,
+      decoration: BoxDecoration(
+        color: ClubColors.field,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: ClubColors.border),
+      ),
       child: Row(
         children: [
           Container(
@@ -319,15 +357,20 @@ class OtpInput extends StatefulWidget {
 }
 
 class _OtpInputState extends State<OtpInput> {
+  static const _marker = '\u200b';
+
   late final List<TextEditingController> _controllers;
   late final List<FocusNode> _nodes;
+  late final List<String> _digits;
+  var _editing = false;
 
   @override
   void initState() {
     super.initState();
+    _digits = [...widget.values];
     _controllers = List.generate(
       6,
-      (index) => TextEditingController(text: widget.values[index]),
+      (index) => TextEditingController(text: _shown(_digits[index])),
     );
     _nodes = List.generate(6, (_) => FocusNode());
   }
@@ -336,9 +379,9 @@ class _OtpInputState extends State<OtpInput> {
   void didUpdateWidget(OtpInput oldWidget) {
     super.didUpdateWidget(oldWidget);
     for (var i = 0; i < 6; i++) {
-      if (_controllers[i].text != widget.values[i]) {
-        _controllers[i].text = widget.values[i];
-      }
+      if (_digits[i] == widget.values[i]) continue;
+      _digits[i] = widget.values[i];
+      _show(i, widget.values[i]);
     }
   }
 
@@ -351,6 +394,60 @@ class _OtpInputState extends State<OtpInput> {
       node.dispose();
     }
     super.dispose();
+  }
+
+  String _shown(String digit) => digit.isEmpty ? _marker : digit;
+
+  void _show(int index, String digit) {
+    final text = _shown(digit);
+    final controller = _controllers[index];
+    if (controller.text == text) return;
+    _editing = true;
+    controller.value = TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+    );
+    _editing = false;
+  }
+
+  void _onChanged(int index, String raw) {
+    if (_editing) return;
+    final digits = raw.replaceAll(_marker, '').replaceAll(RegExp(r'\D'), '');
+    final hadDigit = _digits[index].isNotEmpty;
+    if (digits.isEmpty) {
+      _digits[index] = '';
+      widget.onChanged(index, '');
+      _show(index, '');
+      if (hadDigit) {
+        if (index > 0) _nodes[index - 1].requestFocus();
+        return;
+      }
+      if (index == 0) return;
+      _digits[index - 1] = '';
+      widget.onChanged(index - 1, '');
+      _show(index - 1, '');
+      _nodes[index - 1].requestFocus();
+      return;
+    }
+    if (digits.length > 1) {
+      for (
+        var offset = 0;
+        offset < digits.length && index + offset < 6;
+        offset++
+      ) {
+        final digit = digits[offset];
+        _digits[index + offset] = digit;
+        widget.onChanged(index + offset, digit);
+        _show(index + offset, digit);
+      }
+      final next = index + digits.length;
+      _nodes[next >= 6 ? 5 : next].requestFocus();
+      return;
+    }
+    _digits[index] = digits;
+    widget.onChanged(index, digits);
+    _show(index, digits);
+    if (index < 5) _nodes[index + 1].requestFocus();
   }
 
   @override
@@ -368,10 +465,6 @@ class _OtpInputState extends State<OtpInput> {
                 autofocus: i == 0,
                 textAlign: TextAlign.center,
                 keyboardType: TextInputType.number,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(1),
-                ],
                 style: ClubType.inter(21, height: 1),
                 cursorColor: ClubColors.brand,
                 decoration: InputDecoration(
@@ -391,11 +484,7 @@ class _OtpInputState extends State<OtpInput> {
                     ),
                   ),
                 ),
-                onChanged: (value) {
-                  widget.onChanged(i, value);
-                  if (value.isNotEmpty && i < 5) _nodes[i + 1].requestFocus();
-                  if (value.isEmpty && i > 0) _nodes[i - 1].requestFocus();
-                },
+                onChanged: (value) => _onChanged(i, value),
               ),
             ),
           ),
@@ -422,7 +511,13 @@ class ChoiceChipButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
-      decoration: glassPaint(selected: selected, radius: 999),
+      decoration: BoxDecoration(
+        color: selected ? ClubColors.ink : ClubColors.field,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: selected ? ClubColors.ink : ClubColors.border,
+        ),
+      ),
       child: Material(
         type: MaterialType.transparency,
         child: InkWell(
@@ -438,7 +533,7 @@ class ChoiceChipButton extends StatelessWidget {
               style: ClubType.inter(
                 compact ? 12 : 13,
                 height: 1.2,
-                color: selected ? ClubColors.plum : ClubColors.ink,
+                color: selected ? ClubColors.paper : ClubColors.ink,
               ),
             ),
           ),
@@ -604,7 +699,10 @@ class OnboardingFrame extends StatelessWidget {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(title, style: ClubType.lora(32)),
+                                    Text(
+                                      title,
+                                      style: ClubType.lora(34, height: 1.12),
+                                    ),
                                     if (supporting != null) ...[
                                       const SizedBox(height: 10),
                                       Text(
@@ -642,14 +740,10 @@ class OnboardingFrame extends StatelessWidget {
             ),
             if (footer != null)
               Positioned(
-                left: 16,
-                right: 16,
-                bottom: safeBottom + 10,
-                child: LiquidGlass(
-                  borderRadius: BorderRadius.circular(32),
-                  padding: const EdgeInsets.all(6),
-                  child: footer!,
-                ),
+                left: 20,
+                right: 20,
+                bottom: ClubChrome.barGap(context),
+                child: footer!,
               ),
           ],
         ),
@@ -678,18 +772,25 @@ class GlassIconButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Tooltip(
       message: tooltip,
-      child: LiquidGlass(
-        role: clear ? GlassRole.clear : GlassRole.regular,
-        borderRadius: BorderRadius.circular(size / 2),
-        onPressed: onPressed,
-        child: SizedBox(
-          width: size,
-          height: size,
-          child: Center(
-            child: ClubIcon(
-              icon,
-              size: size < 40 ? 16 : 22,
-              color: clear ? Colors.white : ClubColors.ink,
+      child: Material(
+        color: clear ? const Color(0xCC1A1A1A) : ClubColors.field,
+        shape: CircleBorder(
+          side: BorderSide(
+            color: clear ? Colors.transparent : ClubColors.border,
+          ),
+        ),
+        child: InkWell(
+          onTap: onPressed,
+          customBorder: const CircleBorder(),
+          child: SizedBox(
+            width: size,
+            height: size,
+            child: Center(
+              child: ClubIcon(
+                icon,
+                size: size < 40 ? 16 : 22,
+                color: clear ? Colors.white : ClubColors.ink,
+              ),
             ),
           ),
         ),
@@ -747,39 +848,124 @@ class SuccessMark extends StatelessWidget {
   }
 }
 
-class BottomNav extends StatelessWidget {
+class BottomNav extends StatefulWidget {
   const BottomNav({super.key});
 
   @override
+  State<BottomNav> createState() => _BottomNavState();
+}
+
+class _BottomNavState extends State<BottomNav>
+    with SingleTickerProviderStateMixin {
+  static const _tabs = [
+    (AppTab.club, 'Club', 'club'),
+    (AppTab.likes, 'Likes', 'heart'),
+    (AppTab.mates, 'Mates', 'mates'),
+    (AppTab.profile, 'Profile', 'profile'),
+  ];
+
+  late final AnimationController _slide;
+  int _current = 0;
+  int _previous = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    final model = MockScope.read(context);
+    _current = _indexOf(model.tab);
+    _previous = model.lensFrom;
+    _slide = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 520),
+      value: 1,
+    );
+    if (_previous != _current && !MediaQuery.disableAnimationsOf(context)) {
+      _slide.value = 0;
+      _slide.forward();
+    }
+  }
+
+  int _indexOf(AppTab tab) {
+    final index = _tabs.indexWhere((item) => item.$1 == tab);
+    return index < 0 ? 0 : index;
+  }
+
+  @override
+  void dispose() {
+    _slide.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final model = MockScope.watch(context);
-    final motionOff = MediaQuery.disableAnimationsOf(context);
-    const items = [
-      (AppTab.club, 'Club', 'club'),
-      (AppTab.likes, 'Likes', 'heart'),
-      (AppTab.mates, 'Mates', 'mates'),
-      (AppTab.profile, 'Profile', 'profile'),
-    ];
     return LiquidGlass(
-      borderRadius: BorderRadius.circular(31),
+      borderRadius: BorderRadius.circular(34),
       child: SizedBox(
         height: ClubChrome.navHeight,
-        child: Padding(
-          padding: const EdgeInsets.all(4),
-          child: Row(
-            children: [
-              for (final item in items)
-                Expanded(
-                  child: _NavItem(
-                    label: item.$2,
-                    icon: item.$3,
-                    selected: model.tab == item.$1,
-                    motionOff: motionOff,
-                    onTap: () => MockScope.read(context).goTab(item.$1),
-                  ),
-                ),
-            ],
-          ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return AnimatedBuilder(
+              animation: _slide,
+              builder: (context, _) {
+                final width = constraints.maxWidth;
+                final slot = width / _tabs.length;
+                final t = Curves.easeInOutCubic.transform(_slide.value);
+                final from = (_previous + 0.5) * slot;
+                final to = (_current + 0.5) * slot;
+                final center = from + (to - from) * t;
+                final stretch = math.sin(t * math.pi);
+                final lens = (slot * (0.74 + stretch * 0.7)).clamp(
+                  52.0,
+                  width - 8,
+                );
+                final left = (center - lens / 2).clamp(4.0, width - lens - 4);
+                return Stack(
+                  children: [
+                    Positioned(
+                      left: left,
+                      top: 5,
+                      width: lens,
+                      height: ClubChrome.navHeight - 10,
+                      child: const DecoratedBox(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.all(Radius.circular(28)),
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [Color(0xC7FFFFFF), Color(0x66F4E9F8)],
+                          ),
+                          border: Border.fromBorderSide(
+                            BorderSide(color: Color(0xE6FFFFFF)),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Color(0x33994EA8),
+                              blurRadius: 18,
+                              offset: Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        for (var i = 0; i < _tabs.length; i++)
+                          Expanded(
+                            child: _NavItem(
+                              label: _tabs[i].$2,
+                              icon: _tabs[i].$3,
+                              selected: i == _current,
+                              onTap: () =>
+                                  MockScope.read(context).goTab(_tabs[i].$1),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                );
+              },
+            );
+          },
         ),
       ),
     );
@@ -791,47 +977,37 @@ class _NavItem extends StatelessWidget {
     required this.label,
     required this.icon,
     required this.selected,
-    required this.motionOff,
     required this.onTap,
   });
 
   final String label;
   final String icon;
   final bool selected;
-  final bool motionOff;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? ClubColors.ink : ClubColors.disabled;
+    final color = selected ? ClubColors.brand : ClubColors.disabled;
     return Material(
       type: MaterialType.transparency,
       child: InkWell(
         onTap: onTap,
         customBorder: const StadiumBorder(),
-        child: AnimatedContainer(
-          duration: Duration(milliseconds: motionOff ? 0 : 220),
-          curve: Curves.easeOut,
-          decoration: BoxDecoration(
-            color: selected ? const Color(0xB3FFFFFF) : Colors.transparent,
-            borderRadius: BorderRadius.circular(27),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              ClubIcon(icon, color: color),
-              const SizedBox(height: 3),
-              Text(
-                label,
-                style: ClubType.inter(
-                  10,
-                  weight: FontWeight.w500,
-                  height: 1.2,
-                  color: color,
-                ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ClubIcon(icon, color: color),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: ClubType.inter(
+                10,
+                weight: FontWeight.w600,
+                height: 1.2,
+                color: color,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -845,7 +1021,6 @@ class MainShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bottom = MediaQuery.paddingOf(context).bottom;
     return Scaffold(
       body: Stack(
         children: [
@@ -853,7 +1028,7 @@ class MainShell extends StatelessWidget {
           Positioned(
             left: 16,
             right: 16,
-            bottom: bottom + 8,
+            bottom: ClubChrome.barGap(context),
             child: const BottomNav(),
           ),
         ],
@@ -997,6 +1172,8 @@ class ProfilePhoto extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final remote = asset.startsWith('http');
+    final localFile = asset.startsWith('/') || asset.startsWith('file://');
+    final filePath = asset.startsWith('file://') ? asset.substring(7) : asset;
     final child = asset.isEmpty
         ? ColoredBox(
             color: ClubColors.track,
@@ -1005,6 +1182,18 @@ class ProfilePhoto extends StatelessWidget {
         : remote
         ? Image.network(
             asset,
+            width: width,
+            height: height,
+            fit: BoxFit.cover,
+            alignment: alignment,
+            errorBuilder: (context, error, stackTrace) => ColoredBox(
+              color: ClubColors.track,
+              child: SizedBox(width: width, height: height),
+            ),
+          )
+        : localFile
+        ? Image.file(
+            File(filePath),
             width: width,
             height: height,
             fit: BoxFit.cover,
@@ -1039,32 +1228,28 @@ class ActionBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LiquidGlass(
-      borderRadius: BorderRadius.circular(32),
-      padding: const EdgeInsets.all(6),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 2,
-            child: _Decision(
-              label: 'Pass',
-              icon: 'close',
-              filled: false,
-              onPressed: onPass,
-            ),
+    return Row(
+      children: [
+        Expanded(
+          flex: 2,
+          child: _Decision(
+            label: 'Pass',
+            icon: 'close',
+            filled: false,
+            onPressed: onPass,
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            flex: 3,
-            child: _Decision(
-              label: inviteLabel,
-              icon: 'check',
-              filled: true,
-              onPressed: onInvite,
-            ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          flex: 3,
+          child: _Decision(
+            label: inviteLabel,
+            icon: 'check',
+            filled: true,
+            onPressed: onInvite,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -1088,8 +1273,12 @@ class _Decision extends StatelessWidget {
     const radius = BorderRadius.all(Radius.circular(24));
     return DecoratedBox(
       decoration: filled
-          ? tintedPaint(enabled: true, radius: 24)
-          : const BoxDecoration(),
+          ? const BoxDecoration(color: ClubColors.ink, borderRadius: radius)
+          : const BoxDecoration(
+              color: ClubColors.field,
+              borderRadius: radius,
+              border: Border.fromBorderSide(BorderSide(color: ClubColors.ink)),
+            ),
       child: Material(
         type: MaterialType.transparency,
         child: InkWell(
@@ -1121,21 +1310,12 @@ class _Decision extends StatelessWidget {
   }
 }
 
-class PhotoGrid extends StatefulWidget {
+class PhotoGrid extends StatelessWidget {
   const PhotoGrid({super.key});
-
-  @override
-  State<PhotoGrid> createState() => _PhotoGridState();
-}
-
-class _PhotoGridState extends State<PhotoGrid> {
-  int _count = 2;
-  static const _photos = [ownPhoto, 'assets/photos/meera.jpg', nightPhoto];
 
   @override
   Widget build(BuildContext context) {
     final model = MockScope.watch(context);
-    if (model.live) return _LivePhotos(model: model);
     return GridView.count(
       crossAxisCount: 3,
       shrinkWrap: true,
@@ -1144,146 +1324,89 @@ class _PhotoGridState extends State<PhotoGrid> {
       crossAxisSpacing: 8,
       childAspectRatio: 0.78,
       children: [
-        for (var i = 0; i < 6; i++)
-          if (i < _count)
-            Stack(
-              fit: StackFit.expand,
-              children: [
-                ProfilePhoto(_photos[i % 3], radius: 12),
-                if (i == 0)
-                  Positioned(
-                    left: 6,
-                    bottom: 6,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: ClubColors.ink,
-                        borderRadius: BorderRadius.circular(5),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 4,
-                        ),
-                        child: Text(
-                          'PRIMARY',
-                          style: ClubType.inter(
-                            9,
-                            color: Colors.white,
-                            weight: FontWeight.w600,
-                            height: 1,
-                            letterSpacing: 0.7,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                Positioned(
-                  top: 5,
-                  right: 5,
-                  child: GlassIconButton(
-                    icon: 'close',
-                    tooltip: 'Remove photo',
-                    size: 28,
-                    clear: true,
-                    onPressed: () =>
-                        setState(() => _count = (_count - 1).clamp(1, 6)),
-                  ),
-                ),
-              ],
-            )
-          else
-            DecoratedBox(
-              decoration: glassPaint(radius: 20),
-              child: Material(
-                type: MaterialType.transparency,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(20),
-                  onTap: () =>
-                      setState(() => _count = (_count + 1).clamp(1, 6)),
-                  child: const Center(child: ClubIcon('plus')),
-                ),
-              ),
-            ),
+        for (final photo in model.ownPhotos) _FilledPhoto(photo: photo),
+        for (var i = model.ownPhotos.length; i < maxProfilePhotos; i++)
+          const _EmptyPhotoSlot(),
       ],
     );
   }
 }
 
-class _LivePhotos extends StatelessWidget {
-  const _LivePhotos({required this.model});
+class _FilledPhoto extends StatelessWidget {
+  const _FilledPhoto({required this.photo});
 
-  final MockModel model;
+  final OwnPhoto photo;
 
   @override
   Widget build(BuildContext context) {
-    return GridView.count(
-      crossAxisCount: 3,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 8,
-      crossAxisSpacing: 8,
-      childAspectRatio: 0.78,
-      children: [
-        for (final photo in model.ownPhotos)
-          GestureDetector(
-            onTap: () => model.makePrimary(photo),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                ProfilePhoto(photo.url, radius: 12),
-                Positioned(
-                  left: 6,
-                  bottom: 6,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: ClubColors.ink,
-                      borderRadius: BorderRadius.circular(5),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 4,
-                      ),
-                      child: Text(
-                        photo.primary ? 'PRIMARY' : photo.moderation,
-                        style: ClubType.inter(
-                          9,
-                          color: Colors.white,
-                          weight: FontWeight.w600,
-                          height: 1,
-                          letterSpacing: 0.7,
-                        ),
-                      ),
+    final model = MockScope.read(context);
+    return GestureDetector(
+      onTap: () => model.makePrimary(photo),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          ProfilePhoto(photo.url, radius: 12),
+          if (photo.primary)
+            Positioned(
+              left: 6,
+              bottom: 6,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: ClubColors.ink,
+                  borderRadius: BorderRadius.circular(5),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 4,
+                  ),
+                  child: Text(
+                    'PRIMARY',
+                    style: ClubType.inter(
+                      9,
+                      color: Colors.white,
+                      weight: FontWeight.w600,
+                      height: 1,
+                      letterSpacing: 0.7,
                     ),
                   ),
                 ),
-                Positioned(
-                  top: 5,
-                  right: 5,
-                  child: GlassIconButton(
-                    icon: 'close',
-                    tooltip: 'Remove photo',
-                    size: 28,
-                    clear: true,
-                    onPressed: () => model.removePhoto(photo),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        if (model.ownPhotos.length < 6)
-          DecoratedBox(
-            decoration: glassPaint(radius: 20),
-            child: Material(
-              type: MaterialType.transparency,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(20),
-                onTap: model.busy ? null : () => model.pickPhoto(camera: false),
-                child: const Center(child: ClubIcon('plus')),
               ),
             ),
+          Positioned(
+            top: 5,
+            right: 5,
+            child: GlassIconButton(
+              icon: 'close',
+              tooltip: 'Remove photo',
+              size: 28,
+              clear: true,
+              onPressed: () => model.removePhoto(photo),
+            ),
           ),
-      ],
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyPhotoSlot extends StatelessWidget {
+  const _EmptyPhotoSlot();
+
+  @override
+  Widget build(BuildContext context) {
+    final model = MockScope.watch(context);
+    return Material(
+      color: ClubColors.field,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: ClubColors.border),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: model.busy ? null : () => model.pickPhoto(camera: false),
+        child: const Center(child: ClubIcon('plus', size: 28)),
+      ),
     );
   }
 }

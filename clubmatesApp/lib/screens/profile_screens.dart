@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../club_icon.dart';
 import '../liquid_glass.dart';
@@ -92,6 +93,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late final TextEditingController _name;
   late final TextEditingController _location;
   late final TextEditingController _bio;
+  late final TextEditingController _height;
 
   @override
   void initState() {
@@ -100,6 +102,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _name = TextEditingController(text: model.displayName);
     _location = TextEditingController(text: model.location);
     _bio = TextEditingController(text: model.bio);
+    _height = TextEditingController(text: model.height);
   }
 
   @override
@@ -107,6 +110,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _name.dispose();
     _location.dispose();
     _bio.dispose();
+    _height.dispose();
     super.dispose();
   }
 
@@ -167,24 +171,52 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   label: 'Name',
                   hint: 'Aanya',
                   controller: _name,
-                  onChanged: model.setName,
+                  error: nameIssue(_name.text),
+                  onChanged: (value) {
+                    model.setName(value);
+                    setState(() {});
+                  },
                 ),
                 const SizedBox(height: 20),
                 ClubField(
                   label: 'Bio',
-                  hint: 'Bio',
+                  hint: 'What are you up for tonight?',
                   controller: _bio,
                   maxLines: 4,
+                  error: bioIssue(_bio.text),
+                  inputFormatters: [LengthLimitingTextInputFormatter(500)],
+                  onChanged: (value) {
+                    model.setBio(value);
+                    setState(() {});
+                  },
                 ),
                 const SizedBox(height: 20),
                 ClubField(
                   label: 'Location',
                   hint: 'Bengaluru',
                   controller: _location,
-                  onChanged: model.setLocation,
+                  error: cityIssue(_location.text),
+                  onChanged: (value) {
+                    model.setLocation(value);
+                    setState(() {});
+                  },
                 ),
                 const SizedBox(height: 20),
-                const ClubField(label: 'Height', hint: '172 cm'),
+                ClubField(
+                  label: 'Height',
+                  hint: '172',
+                  controller: _height,
+                  keyboardType: TextInputType.number,
+                  error: heightIssue(_height.text),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(3),
+                  ],
+                  onChanged: (value) {
+                    model.setHeight(value);
+                    setState(() {});
+                  },
+                ),
                 const SizedBox(height: 20),
                 const Eyebrow('Sex'),
                 const SizedBox(height: 12),
@@ -195,6 +227,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         option,
                         selected: model.sex == option,
                         onPressed: () => model.setSex(option),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                const Eyebrow('Who do you want to meet?'),
+                const SizedBox(height: 12),
+                ChipWrap(
+                  children: [
+                    for (final option in interestLabels.values)
+                      ChoiceChipButton(
+                        option,
+                        selected: model.lookingFor == option,
+                        onPressed: () => model.setLookingFor(option),
                       ),
                   ],
                 ),
@@ -213,22 +258,23 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
           ),
           Positioned(
-            left: 16,
-            right: 16,
-            bottom: bottom + 10,
-            child: LiquidGlass(
-              borderRadius: BorderRadius.circular(32),
-              padding: const EdgeInsets.all(6),
-              child: PrimaryButton(
-                'Save changes',
-                onPressed: model.busy
-                    ? null
-                    : () => model.saveEdits(
-                        nextName: _name.text,
-                        nextBio: _bio.text,
-                        nextCity: _location.text,
-                      ),
-              ),
+            left: 20,
+            right: 20,
+            bottom: ClubChrome.barGap(context),
+            child: PrimaryButton(
+              'Save changes',
+              onPressed:
+                  model.busy ||
+                      nameIssue(_name.text, required: true) != null ||
+                      cityIssue(_location.text, required: true) != null ||
+                      bioIssue(_bio.text) != null ||
+                      heightIssue(_height.text) != null
+                  ? null
+                  : () => model.saveEdits(
+                      nextName: _name.text,
+                      nextBio: _bio.text,
+                      nextCity: _location.text,
+                    ),
             ),
           ),
         ],

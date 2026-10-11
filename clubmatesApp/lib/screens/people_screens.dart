@@ -220,7 +220,7 @@ class PersonDetailScreen extends StatelessWidget {
           Positioned(
             left: 16,
             right: 16,
-            bottom: bottom + 8,
+            bottom: ClubChrome.barGap(context),
             child: ActionBar(
               inviteLabel: inviteLabel,
               onPass: () {
