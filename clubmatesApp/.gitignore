@@ -46,3 +46,4 @@ app.*.map.json
 
 # Local Supabase connection for flutter run. Never commit the real key.
 dart_defines.json
+supabase/.temp/
