@@ -263,9 +263,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             bottom: ClubChrome.barGap(context),
             child: PrimaryButton(
               'Save changes',
+              loading: model.busy,
               onPressed:
-                  model.busy ||
-                      nameIssue(_name.text, required: true) != null ||
+                  nameIssue(_name.text, required: true) != null ||
                       cityIssue(_location.text, required: true) != null ||
                       bioIssue(_bio.text) != null ||
                       heightIssue(_height.text) != null
@@ -439,7 +439,7 @@ class ErrorScreen extends StatelessWidget {
           style: ClubType.inter(15, color: ClubColors.muted),
         ),
         const SizedBox(height: 32),
-        PrimaryButton('Try again', onPressed: model.retry),
+        PrimaryButton('Try again', loading: model.busy, onPressed: model.retry),
         const SizedBox(height: 10),
         SecondaryButton(
           'Back to profile',

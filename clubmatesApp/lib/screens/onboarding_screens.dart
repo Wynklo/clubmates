@@ -130,7 +130,8 @@ class _PhoneScreenState extends State<PhoneScreen> {
       onBack: () => model.go(AppRoute.splash),
       footer: PrimaryButton(
         'Continue',
-        onPressed: model.busy || phoneIssue(model.phone) != null
+        loading: model.busy,
+        onPressed: phoneIssue(model.phone) != null
             ? null
             : () => model.sendCode(),
       ),
@@ -166,9 +167,8 @@ class OtpScreen extends StatelessWidget {
       ),
       footer: PrimaryButton(
         'Verify',
-        onPressed: model.busy || model.otp.join().length != 6
-            ? null
-            : model.verifyOtp,
+        loading: model.busy,
+        onPressed: model.otp.join().length != 6 ? null : model.verifyOtp,
       ),
       children: [
         OtpInput(values: model.otp, onChanged: model.setOtp),
@@ -200,7 +200,8 @@ class InterestScreen extends StatelessWidget {
       onBack: () => model.go(AppRoute.otp),
       footer: PrimaryButton(
         'Continue',
-        onPressed: model.busy || interestCode(model.lookingFor) == null
+        loading: model.busy,
+        onPressed: interestCode(model.lookingFor) == null
             ? null
             : model.saveInterest,
       ),
@@ -253,7 +254,8 @@ class _NameScreenState extends State<NameScreen> {
       onBack: () => model.go(AppRoute.interest),
       footer: PrimaryButton(
         'Continue',
-        onPressed: model.busy || nameIssue(model.name, required: true) != null
+        loading: model.busy,
+        onPressed: nameIssue(model.name, required: true) != null
             ? null
             : model.saveName,
       ),
@@ -392,7 +394,8 @@ class _DobScreenState extends State<DobScreen> {
       onBack: () => model.go(AppRoute.name),
       footer: PrimaryButton(
         'Continue',
-        onPressed: model.busy || !model.dobReady ? null : model.saveDob,
+        loading: model.busy,
+        onPressed: model.dobReady ? model.saveDob : null,
       ),
       children: [
         Row(
@@ -457,8 +460,8 @@ class _LocationScreenState extends State<LocationScreen> {
       onBack: () => model.go(AppRoute.dob),
       footer: PrimaryButton(
         'Continue',
-        onPressed:
-            model.busy || cityIssue(model.location, required: true) != null
+        loading: model.busy,
+        onPressed: cityIssue(model.location, required: true) != null
             ? null
             : model.saveCity,
       ),
@@ -564,9 +567,8 @@ class _AboutScreenState extends State<AboutScreen> {
       onBack: () => model.go(AppRoute.nightlife),
       footer: PrimaryButton(
         'Continue',
-        onPressed: model.busy || heightIssue(model.height) != null
-            ? null
-            : model.saveAbout,
+        loading: model.busy,
+        onPressed: heightIssue(model.height) != null ? null : model.saveAbout,
       ),
       children: [
         const Eyebrow('Sex'),
@@ -613,7 +615,8 @@ class PhotosScreen extends StatelessWidget {
       onBack: () => model.go(AppRoute.about),
       footer: PrimaryButton(
         'Continue',
-        onPressed: model.busy || model.ownPhotos.isEmpty
+        loading: model.busy,
+        onPressed: model.ownPhotos.isEmpty
             ? null
             : () => model.go(AppRoute.identity),
       ),
@@ -626,9 +629,8 @@ class PhotosScreen extends StatelessWidget {
               child: SecondaryButton(
                 'Camera',
                 icon: 'camera',
-                onPressed: model.busy
-                    ? null
-                    : () => model.pickPhoto(camera: true),
+                loading: model.busy,
+                onPressed: () => model.pickPhoto(camera: true),
               ),
             ),
             const SizedBox(width: 8),
@@ -636,9 +638,8 @@ class PhotosScreen extends StatelessWidget {
               child: SecondaryButton(
                 'Upload',
                 icon: 'plus',
-                onPressed: model.busy
-                    ? null
-                    : () => model.pickPhoto(camera: false),
+                loading: model.busy,
+                onPressed: () => model.pickPhoto(camera: false),
               ),
             ),
           ],
@@ -894,7 +895,8 @@ class VerifiedScreen extends StatelessWidget {
         const SizedBox(height: 32),
         PrimaryButton(
           'See people',
-          onPressed: model.busy ? null : model.enterApp,
+          loading: model.busy,
+          onPressed: model.enterApp,
         ),
       ],
     );
@@ -907,9 +909,14 @@ class _ResendCode extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final model = MockScope.watch(context);
-    return TextLink(
-      'Resend code',
-      onPressed: model.busy ? null : () => model.sendCode(resend: true),
-    );
+    return model.busy
+        ? const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: ClubPulse(color: ClubColors.brand, size: 6),
+          )
+        : TextLink(
+            'Resend code',
+            onPressed: () => model.sendCode(resend: true),
+          );
   }
 }

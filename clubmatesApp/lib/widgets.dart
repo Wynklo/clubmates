@@ -40,14 +40,20 @@ class Wordmark extends StatelessWidget {
 }
 
 class PrimaryButton extends StatelessWidget {
-  const PrimaryButton(this.label, {super.key, this.onPressed});
+  const PrimaryButton(
+    this.label, {
+    super.key,
+    this.onPressed,
+    this.loading = false,
+  });
 
   final String label;
   final VoidCallback? onPressed;
+  final bool loading;
 
   @override
   Widget build(BuildContext context) {
-    final enabled = onPressed != null;
+    final enabled = onPressed != null || loading;
     const radius = BorderRadius.all(Radius.circular(28));
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -57,25 +63,97 @@ class PrimaryButton extends StatelessWidget {
       child: Material(
         type: MaterialType.transparency,
         child: InkWell(
-          onTap: onPressed,
+          onTap: loading ? null : onPressed,
           borderRadius: radius,
           child: SizedBox(
             height: 50,
             width: double.infinity,
             child: Center(
-              child: Text(
-                label,
-                style: ClubType.inter(
-                  16,
-                  weight: FontWeight.w600,
-                  height: 1,
-                  color: enabled ? ClubColors.paper : ClubColors.disabledText,
-                ),
-              ),
+              child: loading
+                  ? const ClubPulse()
+                  : Text(
+                      label,
+                      style: ClubType.inter(
+                        16,
+                        weight: FontWeight.w600,
+                        height: 1,
+                        color: enabled
+                            ? ClubColors.paper
+                            : ClubColors.disabledText,
+                      ),
+                    ),
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class ClubPulse extends StatefulWidget {
+  const ClubPulse({super.key, this.color = ClubColors.paper, this.size = 7});
+
+  final Color color;
+  final double size;
+
+  @override
+  State<ClubPulse> createState() => _ClubPulseState();
+}
+
+class _ClubPulseState extends State<ClubPulse>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _controller.value = 1;
+    } else {
+      _controller.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  double _opacity(int index) {
+    final phase = (_controller.value + index * 0.18) % 1;
+    return 0.25 + 0.75 * math.sin(phase * math.pi);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final size = widget.size;
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var i = 0; i < 3; i++) ...[
+              if (i > 0) SizedBox(width: size * 0.75),
+              Opacity(
+                opacity: _opacity(i),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: widget.color,
+                    shape: BoxShape.circle,
+                  ),
+                  child: SizedBox(width: size, height: size),
+                ),
+              ),
+            ],
+          ],
+        );
+      },
     );
   }
 }
@@ -87,51 +165,56 @@ class SecondaryButton extends StatelessWidget {
     this.onPressed,
     this.icon,
     this.foreground,
+    this.loading = false,
   });
 
   final String label;
   final VoidCallback? onPressed;
   final String? icon;
   final Color? foreground;
+  final bool loading;
 
   @override
   Widget build(BuildContext context) {
     final color = foreground ?? ClubColors.ink;
+    final enabled = onPressed != null || loading;
     const radius = BorderRadius.all(Radius.circular(28));
     return DecoratedBox(
       decoration: BoxDecoration(
         color: ClubColors.field,
         borderRadius: radius,
         border: Border.all(
-          color: onPressed == null ? ClubColors.disabledLine : ClubColors.ink,
+          color: enabled ? ClubColors.ink : ClubColors.disabledLine,
         ),
       ),
       child: Material(
         type: MaterialType.transparency,
         child: InkWell(
-          onTap: onPressed,
+          onTap: loading ? null : onPressed,
           borderRadius: radius,
           child: SizedBox(
             height: 50,
             width: double.infinity,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (icon != null) ...[
-                  ClubIcon(icon!, size: 18, color: color),
-                  const SizedBox(width: 8),
-                ],
-                Text(
-                  label,
-                  style: ClubType.inter(
-                    16,
-                    weight: FontWeight.w600,
-                    height: 1,
-                    color: color,
+            child: loading
+                ? Center(child: ClubPulse(color: color, size: 6))
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (icon != null) ...[
+                        ClubIcon(icon!, size: 18, color: color),
+                        const SizedBox(width: 8),
+                      ],
+                      Text(
+                        label,
+                        style: ClubType.inter(
+                          16,
+                          weight: FontWeight.w600,
+                          height: 1,
+                          color: color,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
-            ),
           ),
         ),
       ),
@@ -1146,12 +1229,14 @@ class EmptyState extends StatelessWidget {
     required this.copy,
     this.action,
     this.onPressed,
+    this.loading = false,
   });
 
   final String title;
   final String copy;
   final String? action;
   final VoidCallback? onPressed;
+  final bool loading;
 
   @override
   Widget build(BuildContext context) {
@@ -1172,7 +1257,7 @@ class EmptyState extends StatelessWidget {
           ),
           if (action != null) ...[
             const SizedBox(height: 24),
-            SecondaryButton(action!, onPressed: onPressed),
+            SecondaryButton(action!, onPressed: onPressed, loading: loading),
           ],
         ],
       ),
@@ -1303,6 +1388,7 @@ class ActionBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final busy = MockScope.watch(context).busy;
     return Row(
       children: [
         Expanded(
@@ -1311,6 +1397,7 @@ class ActionBar extends StatelessWidget {
             label: 'Pass',
             icon: 'close',
             filled: false,
+            loading: busy,
             onPressed: onPass,
           ),
         ),
@@ -1321,6 +1408,7 @@ class ActionBar extends StatelessWidget {
             label: inviteLabel,
             icon: 'check',
             filled: true,
+            loading: busy,
             onPressed: onInvite,
           ),
         ),
@@ -1335,12 +1423,14 @@ class _Decision extends StatelessWidget {
     required this.icon,
     required this.filled,
     required this.onPressed,
+    required this.loading,
   });
 
   final String label;
   final String icon;
   final bool filled;
   final VoidCallback onPressed;
+  final bool loading;
 
   @override
   Widget build(BuildContext context) {
@@ -1357,27 +1447,29 @@ class _Decision extends StatelessWidget {
       child: Material(
         type: MaterialType.transparency,
         child: InkWell(
-          onTap: onPressed,
+          onTap: loading ? null : onPressed,
           borderRadius: radius,
           customBorder: const StadiumBorder(),
           child: SizedBox(
             height: 48,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ClubIcon(icon, color: color),
-                const SizedBox(width: 8),
-                Text(
-                  label,
-                  style: ClubType.inter(
-                    16,
-                    weight: FontWeight.w600,
-                    height: 1,
-                    color: color,
+            child: loading
+                ? Center(child: ClubPulse(color: color, size: 6))
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ClubIcon(icon, color: color),
+                      const SizedBox(width: 8),
+                      Text(
+                        label,
+                        style: ClubType.inter(
+                          16,
+                          weight: FontWeight.w600,
+                          height: 1,
+                          color: color,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
-            ),
           ),
         ),
       ),

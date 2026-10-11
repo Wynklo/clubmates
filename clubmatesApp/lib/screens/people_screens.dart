@@ -349,7 +349,9 @@ class _SmallAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final busy = MockScope.watch(context).busy;
     const radius = BorderRadius.all(Radius.circular(18));
+    final color = filled ? ClubColors.paper : ClubColors.ink;
     return DecoratedBox(
       decoration: filled
           ? tintedPaint(enabled: true, radius: 18)
@@ -357,19 +359,21 @@ class _SmallAction extends StatelessWidget {
       child: Material(
         type: MaterialType.transparency,
         child: InkWell(
-          onTap: onPressed,
+          onTap: busy ? null : onPressed,
           borderRadius: radius,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-            child: Text(
-              label,
-              style: ClubType.inter(
-                12,
-                weight: FontWeight.w600,
-                height: 1,
-                color: filled ? ClubColors.paper : ClubColors.ink,
-              ),
-            ),
+            child: busy
+                ? ClubPulse(color: color, size: 5)
+                : Text(
+                    label,
+                    style: ClubType.inter(
+                      12,
+                      weight: FontWeight.w600,
+                      height: 1,
+                      color: color,
+                    ),
+                  ),
           ),
         ),
       ),

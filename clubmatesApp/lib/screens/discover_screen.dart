@@ -20,6 +20,7 @@ class ClubScreen extends StatelessWidget {
             copy:
                 'New people show up as plans take shape. Check back a little later.',
             action: 'Refresh',
+            loading: model.busy,
             onPressed: model.refreshClub,
           ),
         ),
