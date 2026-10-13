@@ -263,7 +263,7 @@ class ClubmatesRepository {
   Future<List<PublicPerson>> discover() async {
     final rows = await _db.rpc(
       'get_discovery_candidates',
-      params: {'p_limit': 10},
+      params: {'p_limit': 500},
     );
     return _peopleFromRows(rows as List<dynamic>);
   }

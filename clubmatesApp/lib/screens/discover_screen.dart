@@ -32,9 +32,9 @@ class _ClubScreenState extends State<ClubScreen> {
         child: Padding(
           padding: EdgeInsets.only(bottom: ClubChrome.clearance(context)),
           child: EmptyState(
-            title: 'No one nearby tonight.',
+            title: 'No profiles yet.',
             copy:
-                'Club shows people active in the last 20 minutes, within 10 km.',
+                'Club shows every profile except people you are already matched with.',
             action: 'Refresh',
             loading: model.busy,
             onPressed: model.refreshClub,

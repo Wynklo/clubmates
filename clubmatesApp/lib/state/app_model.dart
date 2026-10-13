@@ -256,13 +256,11 @@ class AppModel extends ChangeNotifier {
 
   List<Person> get clubPeople {
     final source = live ? _candidates : _offlineClub();
-    final shown = source.where(_shownInClub).toList()
-      ..sort((a, b) => (a.minutesAgo ?? 999).compareTo(b.minutesAgo ?? 999));
     if (!live) {
-      if (profiles >= shown.length) return const [];
-      return shown.skip(profiles).toList();
+      if (profiles >= source.length) return const [];
+      return source.skip(profiles).toList();
     }
-    return shown;
+    return source;
   }
 
   List<Person> get incoming => live ? _incoming : (showLikes ? [aria] : []);
@@ -872,37 +870,7 @@ class AppModel extends ChangeNotifier {
   }
 
   List<Person> _offlineClub() {
-    if (_interestedIn == 'MAN') return const [kabir];
-    if (_interestedIn == 'WOMAN') return const [meera];
-    if (_interestedIn == 'NON_BINARY') return const [];
     return const [meera, kabir, aria, riya];
-  }
-
-  bool _shownInClub(Person person) {
-    if (person.minutesAgo != null && person.minutesAgo! > 20) return false;
-    final nearby = _isNearby(person);
-    return nearbyOnly ? nearby : !nearby;
-  }
-
-  bool _isNearby(Person person) {
-    if (!_sameArea(person.location, location)) return false;
-    final km = person.distanceKm;
-    return km == null || km <= 10;
-  }
-
-  bool _sameArea(String place, String city) {
-    const areas = {
-      'bengaluru': ['indiranagar', 'koramangala', 'bengaluru', 'bangalore'],
-      'bangalore': ['indiranagar', 'koramangala', 'bengaluru', 'bangalore'],
-      'mumbai': ['bandra', 'mumbai'],
-      'pune': ['koregaon park', 'pune'],
-      'delhi': ['delhi'],
-      'hyderabad': ['hyderabad'],
-    };
-    final key = city.trim().toLowerCase();
-    final names = areas[key] ?? [key];
-    final lowered = place.toLowerCase();
-    return names.any(lowered.contains) || lowered.contains(key);
   }
 
   void _removeVisible(Person person) {
@@ -1074,6 +1042,7 @@ class AppModel extends ChangeNotifier {
       await action();
       return true;
     } catch (error) {
+      debugPrint('Clubmates save failed: $error');
       errorMessage = _message(error);
       return false;
     } finally {
@@ -1083,7 +1052,11 @@ class AppModel extends ChangeNotifier {
   }
 
   Future<void> _resume() async {
-    final account = await _api.loadAccount();
+    var account = await _api.loadAccount();
+    if (!account.hasProfile) {
+      await _api.createProfile('New');
+      account = await _api.loadAccount();
+    }
     _applyAccount(account);
     ownPhotos = account.hasProfile ? await _api.loadOwnPhotos() : [];
     await _openNextStep();
@@ -1118,22 +1091,13 @@ class AppModel extends ChangeNotifier {
     go(AppRoute.club);
   }
 
-  List<Person> _sampleClub() {
-    return const [meera, aria, riya, kabir];
-  }
-
   Future<void> _loadPeople() async {
     final discovered = await _api.discover();
     final invites = await _api.incomingInvites();
     final mates = await _api.mates();
-    final real = discovered.map(_card).toList();
-    final realNames = real.map((person) => person.name.toLowerCase()).toSet();
-    final samples = _sampleClub().where(
-      (person) => !realNames.contains(person.name.toLowerCase()),
-    );
     _candidates
       ..clear()
-      ..addAll([...samples, ...real]);
+      ..addAll(discovered.map(_card));
     _incoming
       ..clear()
       ..addAll(invites.map(_card));
