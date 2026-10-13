@@ -269,10 +269,14 @@ class ClubmatesRepository {
   }
 
   Future<void> pass(String targetId) {
-    return _db.from('passes').insert({
-      'user_id': _uid,
-      'target_user_id': targetId,
-    });
+    return _db.from('passes').upsert(
+      {
+        'user_id': _uid,
+        'target_user_id': targetId,
+      },
+      onConflict: 'user_id,target_user_id',
+      ignoreDuplicates: true,
+    );
   }
 
   Future<void> invite(String targetId) {
