@@ -28,7 +28,7 @@ class _ClubmatesAppState extends State<ClubmatesApp> {
     return AppScope(
       model: _model,
       child: MaterialApp(
-        title: 'Clubmates',
+        title: 'ClubMates',
         debugShowCheckedModeBanner: false,
         theme: clubTheme(),
         home: ListenableBuilder(
