@@ -661,6 +661,11 @@ class MockModel extends ChangeNotifier {
       return;
     }
     if (person == null) return;
+    if (person.id.isEmpty) {
+      if (_candidates.isNotEmpty) _candidates.removeAt(0);
+      notifyListeners();
+      return;
+    }
     await _guard(() async {
       await _api.pass(person.id);
       if (_candidates.isNotEmpty) _candidates.removeAt(0);
@@ -674,6 +679,11 @@ class MockModel extends ChangeNotifier {
       return;
     }
     if (person == null) return;
+    if (person.id.isEmpty) {
+      if (_candidates.isNotEmpty) _candidates.removeAt(0);
+      go(AppRoute.inviteSent);
+      return;
+    }
     await _guard(() async {
       await _api.invite(person.id);
       if (_candidates.isNotEmpty) _candidates.removeAt(0);
@@ -883,13 +893,22 @@ class MockModel extends ChangeNotifier {
     go(AppRoute.club);
   }
 
+  List<MockPerson> _sampleClub() {
+    return const [meera, aria, riya, kabir];
+  }
+
   Future<void> _loadPeople() async {
     final discovered = await _api.discover();
     final invites = await _api.incomingInvites();
     final mates = await _api.mates();
+    final real = discovered.map(_card).toList();
+    final realNames = real.map((person) => person.name.toLowerCase()).toSet();
+    final samples = _sampleClub().where(
+      (person) => !realNames.contains(person.name.toLowerCase()),
+    );
     _candidates
       ..clear()
-      ..addAll(discovered.map(_card));
+      ..addAll([...samples, ...real]);
     _incoming
       ..clear()
       ..addAll(invites.map(_card));
