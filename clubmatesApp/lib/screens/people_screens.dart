@@ -114,6 +114,7 @@ class PersonDetailScreen extends StatelessWidget {
     final bottom = MediaQuery.paddingOf(context).bottom;
     return Scaffold(
       body: Stack(
+        fit: StackFit.expand,
         children: [
           ListView(
             padding: EdgeInsets.only(bottom: bottom + 96),
