@@ -121,28 +121,34 @@
       "filename": "ItunesArtwork@2x.png"
     },
     {
-      "size": "1024x1024",
-      "idiom": "universal",
-      "platform": "ios",
-      "filename": "AppIcon-dark-1024.png",
       "appearances": [
         {
           "appearance": "luminosity",
           "value": "dark"
         }
-      ]
+      ],
+      "size": "1024x1024",
+      "idiom": "ios-marketing",
+      "scale": "1x",
+      "filename": "AppIcon-dark-1024.png"
     },
     {
       "size": "1024x1024",
       "idiom": "universal",
       "platform": "ios",
-      "filename": "AppIcon-tinted-1024.png",
+      "filename": "ItunesArtwork@2x.png"
+    },
+    {
       "appearances": [
         {
           "appearance": "luminosity",
-          "value": "tinted"
+          "value": "dark"
         }
-      ]
+      ],
+      "size": "1024x1024",
+      "idiom": "universal",
+      "platform": "ios",
+      "filename": "AppIcon-dark-1024.png"
     }
   ],
   "info": {
