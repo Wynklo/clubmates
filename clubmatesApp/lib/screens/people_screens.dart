@@ -15,11 +15,24 @@ class LikesScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final model = AppScope.watch(context);
     return MainShell(
-      child: ListView(
-        padding: EdgeInsets.only(bottom: ClubChrome.clearance(context)),
-        children: [
-          const PageHeading(title: 'People who want to go out with you'),
-          if (model.incoming.isNotEmpty)
+      child: RefreshIndicator.adaptive(
+        color: ClubColors.brand,
+        backgroundColor: ClubColors.paper,
+        onRefresh: model.refreshPeople,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.only(bottom: ClubChrome.clearance(context)),
+          children: [
+            const PageHeading(title: 'People who want to go out with you'),
+            if (model.errorMessage != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                child: Text(
+                  model.errorMessage!,
+                  style: ClubType.inter(13, color: ClubColors.error),
+                ),
+              ),
+            if (model.incoming.isNotEmpty)
             for (final person in model.incoming)
               _PersonRow(
                 person: person,
@@ -55,7 +68,8 @@ class LikesScreen extends StatelessWidget {
               copy:
                   "When someone wants to make a plan with you, they'll appear here.",
             ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -68,14 +82,27 @@ class MatesScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final model = AppScope.watch(context);
     return MainShell(
-      child: ListView(
-        padding: EdgeInsets.only(bottom: ClubChrome.clearance(context)),
-        children: [
-          const PageHeading(
-            title: 'Mates',
-            supporting: 'People who are up for going out with you.',
-          ),
-          if (model.mateList.isNotEmpty)
+      child: RefreshIndicator.adaptive(
+        color: ClubColors.brand,
+        backgroundColor: ClubColors.paper,
+        onRefresh: model.refreshPeople,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.only(bottom: ClubChrome.clearance(context)),
+          children: [
+            const PageHeading(
+              title: 'Mates',
+              supporting: 'People who are up for going out with you.',
+            ),
+            if (model.errorMessage != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                child: Text(
+                  model.errorMessage!,
+                  style: ClubType.inter(13, color: ClubColors.error),
+                ),
+              ),
+            if (model.mateList.isNotEmpty)
             for (final person in model.mateList)
               _PersonRow(
                 person: person,
@@ -93,7 +120,8 @@ class MatesScreen extends StatelessWidget {
               action: 'Explore Club',
               onPressed: () => model.go(AppRoute.club),
             ),
-        ],
+          ],
+        ),
       ),
     );
   }

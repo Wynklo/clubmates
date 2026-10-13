@@ -746,6 +746,18 @@ class AppModel extends ChangeNotifier {
     await _guard(_loadPeople);
   }
 
+  Future<void> refreshPeople() async {
+    if (!live) return;
+    try {
+      await _loadPeople();
+      errorMessage = null;
+    } catch (error) {
+      debugPrint('Clubmates save failed: $error');
+      errorMessage = _message(error);
+    }
+    notifyListeners();
+  }
+
   void keepExploring() {
     if (!live) profiles += 1;
     go(AppRoute.club);
