@@ -3,11 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../club_icon.dart';
-import '../liquid_glass.dart';
-import '../mock_model.dart';
-import '../theme.dart';
-import '../widgets.dart';
+import '../state/app_model.dart';
+import '../theme/theme.dart';
+import '../ui/club_icon.dart';
+import '../ui/liquid_glass.dart';
+import '../ui/widgets.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -40,7 +40,7 @@ class _SplashScreenState extends State<SplashScreen>
     }
     _timer = Timer(const Duration(milliseconds: 1700), () {
       if (!mounted) return;
-      final model = MockScope.read(context);
+      final model = AppScope.read(context);
       if (model.route == AppRoute.splash) model.start();
     });
   }
@@ -109,7 +109,7 @@ class _PhoneScreenState extends State<PhoneScreen> {
   @override
   void initState() {
     super.initState();
-    _controller = TextEditingController(text: MockScope.read(context).phone);
+    _controller = TextEditingController(text: AppScope.read(context).phone);
   }
 
   @override
@@ -120,7 +120,7 @@ class _PhoneScreenState extends State<PhoneScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final model = MockScope.watch(context);
+    final model = AppScope.watch(context);
     return OnboardingFrame(
       title: "What's your number?",
       supporting: model.testLogin
@@ -149,7 +149,7 @@ class OtpScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final model = MockScope.watch(context);
+    final model = AppScope.watch(context);
     final sentTo = model.phone.length == 10
         ? '+91 ${model.phone.substring(0, 5)} ${model.phone.substring(5)}'
         : '+91 98765 43210';
@@ -191,7 +191,7 @@ class InterestScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final model = MockScope.watch(context);
+    final model = AppScope.watch(context);
     return OnboardingFrame(
       title: 'Who do you want to meet?',
       supporting: 'Club shows people of the gender you choose.',
@@ -234,7 +234,7 @@ class _NameScreenState extends State<NameScreen> {
   @override
   void initState() {
     super.initState();
-    _controller = TextEditingController(text: MockScope.read(context).name);
+    _controller = TextEditingController(text: AppScope.read(context).name);
   }
 
   @override
@@ -245,7 +245,7 @@ class _NameScreenState extends State<NameScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final model = MockScope.watch(context);
+    final model = AppScope.watch(context);
     return OnboardingFrame(
       title: 'Your name',
       supporting: 'What should people call you?',
@@ -289,7 +289,7 @@ class _DobScreenState extends State<DobScreen> {
   @override
   void initState() {
     super.initState();
-    final model = MockScope.read(context);
+    final model = AppScope.read(context);
     _digits = [model.month, model.day, model.year];
     _controllers = [
       for (final digits in _digits) TextEditingController(text: _shown(digits)),
@@ -324,7 +324,7 @@ class _DobScreenState extends State<DobScreen> {
 
   void _commit(int index, String digits) {
     _digits[index] = digits;
-    final model = MockScope.read(context);
+    final model = AppScope.read(context);
     switch (index) {
       case 0:
         model.setDobPart(nextMonth: digits);
@@ -383,7 +383,7 @@ class _DobScreenState extends State<DobScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final model = MockScope.watch(context);
+    final model = AppScope.watch(context);
     const labels = ['Month', 'Date', 'Year'];
     const hints = ['04', '12', '1998'];
     return OnboardingFrame(
@@ -440,7 +440,7 @@ class _LocationScreenState extends State<LocationScreen> {
   @override
   void initState() {
     super.initState();
-    _controller = TextEditingController(text: MockScope.read(context).location);
+    _controller = TextEditingController(text: AppScope.read(context).location);
   }
 
   @override
@@ -451,7 +451,7 @@ class _LocationScreenState extends State<LocationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final model = MockScope.watch(context);
+    final model = AppScope.watch(context);
     return OnboardingFrame(
       title: 'Where are you?',
       supporting: "We'll show you people heading out nearby.",
@@ -497,7 +497,7 @@ class NightlifeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final model = MockScope.watch(context);
+    final model = AppScope.watch(context);
     return OnboardingFrame(
       title: 'What kind of night are you after?',
       supporting: "Tell people what you're usually up for.",
@@ -548,7 +548,7 @@ class _AboutScreenState extends State<AboutScreen> {
   @override
   void initState() {
     super.initState();
-    _height = TextEditingController(text: MockScope.read(context).height);
+    _height = TextEditingController(text: AppScope.read(context).height);
   }
 
   @override
@@ -559,7 +559,7 @@ class _AboutScreenState extends State<AboutScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final model = MockScope.watch(context);
+    final model = AppScope.watch(context);
     return OnboardingFrame(
       title: 'A bit about you',
       error: model.errorMessage,
@@ -606,7 +606,7 @@ class PhotosScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final model = MockScope.watch(context);
+    final model = AppScope.watch(context);
     return OnboardingFrame(
       title: 'Add your photos',
       supporting: 'Add up to 3 photos. The first one is the one people see.',
@@ -658,7 +658,7 @@ class IdentityScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final model = MockScope.watch(context);
+    final model = AppScope.watch(context);
     return OnboardingFrame(
       title: 'Verify your identity',
       supporting: 'Verification helps keep Clubmates real.',
@@ -803,7 +803,7 @@ class FaceScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final model = MockScope.watch(context);
+    final model = AppScope.watch(context);
     return OnboardingFrame(
       title: "Confirm it's you",
       supporting: 'Look at the camera so we can verify your profile.',
@@ -875,7 +875,7 @@ class VerifiedScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final model = MockScope.watch(context);
+    final model = AppScope.watch(context);
     return CenteredScreen(
       children: [
         const SuccessMark(),
@@ -908,7 +908,7 @@ class _ResendCode extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final model = MockScope.watch(context);
+    final model = AppScope.watch(context);
     return model.busy
         ? const Padding(
             padding: EdgeInsets.symmetric(vertical: 12),

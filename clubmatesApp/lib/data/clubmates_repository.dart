@@ -50,6 +50,33 @@ class ClubmatesRepository {
 
   Future<void> signOut() => _db.auth.signOut();
 
+  /// Removes the signed-in account. Photo files go through the Storage API
+  /// first. The database function then deletes the auth user, and the profile
+  /// rows cascade from that.
+  Future<void> deleteAccount() async {
+    final rows = await _db
+        .from('profile_photos')
+        .select('storage_path')
+        .eq('user_id', _uid);
+    final paths = <String>{
+      for (final row in rows)
+        if (row['storage_path'] is String) row['storage_path'] as String,
+    };
+    try {
+      final listed = await _db.storage.from('profile-photos').list(path: _uid);
+      for (final file in listed) {
+        if (file.name.isEmpty) continue;
+        paths.add('$_uid/${file.name}');
+      }
+    } on StorageException {
+      // A person with no uploaded folder still has database rows to remove.
+    }
+    if (paths.isNotEmpty) {
+      await _db.storage.from('profile-photos').remove(paths.toList());
+    }
+    await _db.rpc('delete_own_account');
+  }
+
   Future<OwnAccount> loadAccount() async {
     final uid = _uid;
     final profile = await _db
@@ -107,6 +134,17 @@ class ClubmatesRepository {
       'height_cm': ?heightCm,
     };
     return _db.from('profiles').update(fields).eq('id', _uid);
+  }
+
+  Future<void> saveLocation({
+    required double latitude,
+    required double longitude,
+  }) {
+    return _db.from('profiles').update({
+      'latitude': latitude,
+      'longitude': longitude,
+      'location_updated_at': DateTime.now().toUtc().toIso8601String(),
+    }).eq('id', _uid);
   }
 
   Future<void> createPrivate(DateTime dob, {String? interestedIn}) {

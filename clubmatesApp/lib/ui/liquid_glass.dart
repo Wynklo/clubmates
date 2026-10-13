@@ -2,7 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
-import 'theme.dart';
+import '../theme/theme.dart';
 
 /// Floating control material, following Apple's Liquid Glass guidance:
 /// bars and controls sit above content, content itself stays solid,
@@ -10,7 +10,13 @@ import 'theme.dart';
 enum GlassRole { regular, clear }
 
 abstract final class ClubChrome {
+  /// Outer tab bar frame: full width, 95pt, flush with the screen bottom.
+  static const barFrameHeight = 95.0;
+
+  /// Pill inside that frame. 95 - 16 top - 25 bottom.
   static const navHeight = 54.0;
+
+  static const barFramePadding = EdgeInsets.fromLTRB(25, 16, 25, 25);
 
   /// Space between a bottom control and the physical screen edge.
   /// Keeps the home indicator visible underneath floating bars and buttons.
@@ -20,7 +26,7 @@ abstract final class ClubChrome {
   }
 
   static double clearance(BuildContext context) {
-    return barGap(context) + navHeight + 18;
+    return barFrameHeight + 12;
   }
 
   static bool reduceTransparency(BuildContext context) {

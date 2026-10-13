@@ -5,10 +5,10 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../state/app_model.dart';
+import '../theme/theme.dart';
 import 'club_icon.dart';
 import 'liquid_glass.dart';
-import 'mock_model.dart';
-import 'theme.dart';
 
 class Wordmark extends StatelessWidget {
   const Wordmark({super.key, this.large = false});
@@ -54,11 +54,23 @@ class PrimaryButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final enabled = onPressed != null || loading;
-    const radius = BorderRadius.all(Radius.circular(28));
+    const radius = BorderRadius.all(Radius.circular(17));
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: enabled ? ClubColors.ink : ClubColors.disabledFill,
+        color: enabled ? const Color(0xF51A1A1A) : ClubColors.disabledFill,
         borderRadius: radius,
+        border: Border.all(
+          color: enabled ? const Color(0xD1000000) : ClubColors.disabledLine,
+        ),
+        boxShadow: enabled
+            ? const [
+                BoxShadow(
+                  color: Color(0x2E1A1A1A),
+                  blurRadius: 22,
+                  offset: Offset(0, 8),
+                ),
+              ]
+            : null,
       ),
       child: Material(
         type: MaterialType.transparency,
@@ -66,7 +78,7 @@ class PrimaryButton extends StatelessWidget {
           onTap: loading ? null : onPressed,
           borderRadius: radius,
           child: SizedBox(
-            height: 50,
+            height: 52,
             width: double.infinity,
             child: Center(
               child: loading
@@ -77,6 +89,7 @@ class PrimaryButton extends StatelessWidget {
                         16,
                         weight: FontWeight.w600,
                         height: 1,
+                        letterSpacing: -0.16,
                         color: enabled
                             ? ClubColors.paper
                             : ClubColors.disabledText,
@@ -189,14 +202,23 @@ class SecondaryButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = foreground ?? ClubColors.ink;
     final enabled = onPressed != null || loading;
-    const radius = BorderRadius.all(Radius.circular(28));
+    const radius = BorderRadius.all(Radius.circular(17));
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: ClubColors.field,
+        color: enabled ? const Color(0xC7FFFFFF) : ClubColors.disabledFill,
         borderRadius: radius,
         border: Border.all(
-          color: enabled ? ClubColors.ink : ClubColors.disabledLine,
+          color: enabled ? const Color(0xB8FFFFFF) : ClubColors.disabledLine,
         ),
+        boxShadow: enabled
+            ? const [
+                BoxShadow(
+                  color: Color(0x1F24171F),
+                  blurRadius: 32,
+                  offset: Offset(0, 10),
+                ),
+              ]
+            : null,
       ),
       child: Material(
         type: MaterialType.transparency,
@@ -204,7 +226,7 @@ class SecondaryButton extends StatelessWidget {
           onTap: loading ? null : onPressed,
           borderRadius: radius,
           child: SizedBox(
-            height: 50,
+            height: 52,
             width: double.infinity,
             child: loading
                 ? Center(child: ClubPulse(color: color, size: 6))
@@ -320,12 +342,12 @@ class ClubField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final invalid = error != null && error!.isNotEmpty;
-    final radius = BorderRadius.circular(14);
+    final radius = BorderRadius.circular(15);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (label != null) ...[
-          Text(label!, style: ClubType.inter(14, weight: FontWeight.w600)),
+          Text(label!.toUpperCase(), style: ClubType.eyebrow),
           const SizedBox(height: 8),
         ],
         TextField(
@@ -338,34 +360,34 @@ class ClubField extends StatelessWidget {
           inputFormatters: inputFormatters,
           maxLines: maxLines,
           textAlign: textAlign,
-          style: ClubType.inter(17, height: 1.3),
-          cursorColor: ClubColors.ink,
+          style: ClubType.inter(16, height: 1.3),
+          cursorColor: ClubColors.brand,
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: ClubType.inter(
-              17,
+              16,
               color: ClubColors.disabled,
               height: 1.3,
             ),
             filled: true,
-            fillColor: ClubColors.field,
+            fillColor: const Color(0xD6FFFFFF),
             contentPadding: EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: maxLines > 1 ? 14 : 16,
+              horizontal: 14,
+              vertical: maxLines > 1 ? 14 : 0,
             ),
             constraints: maxLines == 1
-                ? const BoxConstraints(minHeight: 56)
+                ? const BoxConstraints(minHeight: 52)
                 : const BoxConstraints(minHeight: 96),
             enabledBorder: OutlineInputBorder(
               borderRadius: radius,
               borderSide: BorderSide(
-                color: invalid ? ClubColors.error : ClubColors.border,
+                color: invalid ? ClubColors.error : const Color(0x171A1A1A),
               ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: radius,
               borderSide: BorderSide(
-                color: invalid ? ClubColors.error : ClubColors.ink,
+                color: invalid ? ClubColors.error : ClubColors.brand,
                 width: 1.5,
               ),
             ),
@@ -389,11 +411,11 @@ class PhoneField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 56,
+      height: 52,
       decoration: BoxDecoration(
-        color: ClubColors.field,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: ClubColors.border),
+        color: const Color(0xD6FFFFFF),
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: const Color(0x171A1A1A)),
       ),
       child: Row(
         children: [
@@ -865,28 +887,53 @@ class GlassIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: Material(
-        color: clear ? const Color(0xCC1A1A1A) : ClubColors.field,
-        shape: CircleBorder(
-          side: BorderSide(
-            color: clear ? Colors.transparent : ClubColors.border,
+    final glyph = icon == 'back' ? 17.0 : (size <= 32 ? 14.0 : 20.0);
+    final button = SizedBox(
+      width: size,
+      height: size,
+      child: Center(
+        child: ClubIcon(
+          icon,
+          size: glyph,
+          color: clear ? Colors.white : ClubColors.ink,
+        ),
+      ),
+    );
+    if (clear) {
+      return Tooltip(
+        message: tooltip,
+        child: Material(
+          color: const Color(0xCC1A1A1A),
+          shape: const CircleBorder(),
+          child: InkWell(
+            onTap: onPressed,
+            customBorder: const CircleBorder(),
+            child: button,
           ),
         ),
-        child: InkWell(
-          onTap: onPressed,
-          customBorder: const CircleBorder(),
-          child: SizedBox(
-            width: size,
-            height: size,
-            child: Center(
-              child: ClubIcon(
-                icon,
-                size: size < 40 ? 16 : 22,
-                color: clear ? Colors.white : ClubColors.ink,
-              ),
+      );
+    }
+    return Tooltip(
+      message: tooltip,
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          color: Color(0xFFF7F7F7),
+          boxShadow: [
+            BoxShadow(
+              color: Color(0x1F000000),
+              blurRadius: 40,
+              offset: Offset(0, 8),
             ),
+          ],
+        ),
+        child: Material(
+          color: const Color(0xA6FFFFFF),
+          shape: const CircleBorder(),
+          child: InkWell(
+            onTap: onPressed,
+            customBorder: const CircleBorder(),
+            child: button,
           ),
         ),
       ),
@@ -979,7 +1026,7 @@ class _BottomNavState extends State<BottomNav>
     super.didChangeDependencies();
     if (_motionReady) return;
     _motionReady = true;
-    final model = MockScope.read(context);
+    final model = AppScope.read(context);
     _current = _indexOf(model.tab);
     _previous = model.lensFrom;
     if (_previous != _current && !MediaQuery.disableAnimationsOf(context)) {
@@ -1001,42 +1048,24 @@ class _BottomNavState extends State<BottomNav>
 
   @override
   Widget build(BuildContext context) {
-    final reduce = ClubChrome.reduceTransparency(context);
-    const radius = BorderRadius.all(Radius.circular(296));
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: radius,
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x1F000000),
-            blurRadius: 40,
-            offset: Offset(0, 8),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: radius,
-        child: BackdropFilter(
-          filter: ImageFilter.blur(
-            sigmaX: reduce ? 0 : 24,
-            sigmaY: reduce ? 0 : 24,
-          ),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: reduce
-                  ? ClubColors.paper
-                  : Colors.white.withValues(alpha: 0.72),
-              borderRadius: radius,
-              border: Border.all(
-                color: reduce
-                    ? ClubColors.border
-                    : Colors.white.withValues(alpha: 0.8),
-              ),
+    return SizedBox(
+      height: ClubChrome.barFrameHeight,
+      child: Padding(
+        padding: ClubChrome.barFramePadding,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            const Positioned(
+              left: -4,
+              right: -4,
+              top: -4,
+              bottom: -4,
+              child: _TabBarGlass(),
             ),
-            child: SizedBox(
-              height: ClubChrome.navHeight,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 2),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: SizedBox(
+                height: ClubChrome.navHeight,
                 child: LayoutBuilder(
                   builder: (context, constraints) {
                     return AnimatedBuilder(
@@ -1069,6 +1098,7 @@ class _BottomNavState extends State<BottomNav>
                               ),
                             ),
                             Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 for (var i = 0; i < _tabs.length; i++)
                                   Expanded(
@@ -1076,7 +1106,7 @@ class _BottomNavState extends State<BottomNav>
                                       label: _tabs[i].$2,
                                       icon: _tabs[i].$3,
                                       selected: i == _current,
-                                      onTap: () => MockScope.read(
+                                      onTap: () => AppScope.read(
                                         context,
                                       ).goTab(_tabs[i].$1),
                                     ),
@@ -1089,6 +1119,51 @@ class _BottomNavState extends State<BottomNav>
                     );
                   },
                 ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TabBarGlass extends StatelessWidget {
+  const _TabBarGlass();
+
+  static const _radius = BorderRadius.all(Radius.circular(296));
+  static const _shadow = [
+    BoxShadow(color: Color(0x1F000000), blurRadius: 40, offset: Offset(0, 8)),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final reduce = ClubChrome.reduceTransparency(context);
+    if (reduce) {
+      return const DecoratedBox(
+        decoration: BoxDecoration(
+          color: Color(0xFFF7F7F7),
+          borderRadius: _radius,
+          boxShadow: _shadow,
+        ),
+      );
+    }
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        borderRadius: _radius,
+        boxShadow: _shadow,
+      ),
+      child: ClipRRect(
+        borderRadius: _radius,
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+          child: BackdropFilter(
+            filter: ColorFilter.mode(Color(0xA6FFFFFF), BlendMode.srcOver),
+            child: BackdropFilter(
+              filter: ColorFilter.mode(Color(0xFFDDDDDD), BlendMode.colorBurn),
+              child: BackdropFilter(
+                filter: ColorFilter.mode(Color(0xFFF7F7F7), BlendMode.darken),
+                child: SizedBox.expand(),
               ),
             ),
           ),
@@ -1119,22 +1194,38 @@ class _NavItem extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         customBorder: const StadiumBorder(),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ClubIcon(icon, size: 18, color: color),
-            const SizedBox(height: 1),
-            Text(
-              label,
-              style: ClubType.inter(
-                10,
-                weight: FontWeight.w600,
-                height: 1.2,
-                letterSpacing: -0.1,
-                color: color,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(8, 6, 8, 7),
+          child: Column(
+            children: [
+              SizedBox(
+                height: 28,
+                child: Center(
+                  child: ClubIcon(
+                    icon,
+                    size: 22,
+                    color: color,
+                    filled: selected,
+                  ),
+                ),
               ),
-            ),
-          ],
+              SizedBox(height: selected ? 1 : 0.5),
+              SizedBox(
+                height: 12,
+                child: Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  style: ClubType.inter(
+                    10,
+                    weight: FontWeight.w600,
+                    height: 1.2,
+                    letterSpacing: selected ? -0.1 : 0,
+                    color: color,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1182,9 +1273,9 @@ class _MainShellState extends State<MainShell> {
           children: [
             SafeArea(bottom: false, child: widget.child),
             Positioned(
-              left: 25,
-              right: 25,
-              bottom: ClubChrome.barGap(context),
+              left: 0,
+              right: 0,
+              bottom: 0,
               child: AnimatedSlide(
                 offset: _shown ? Offset.zero : const Offset(0, 1.8),
                 duration: Duration(milliseconds: motionOff ? 0 : 240),
@@ -1277,12 +1368,14 @@ class SettingsRow extends StatelessWidget {
     this.onPressed,
     this.detail,
     this.danger = false,
+    this.divider = true,
   });
 
   final String label;
   final VoidCallback? onPressed;
   final String? detail;
   final bool danger;
+  final bool divider;
 
   @override
   Widget build(BuildContext context) {
@@ -1291,15 +1384,19 @@ class SettingsRow extends StatelessWidget {
       onTap: onPressed,
       child: Container(
         constraints: const BoxConstraints(minHeight: 56),
-        decoration: const BoxDecoration(
-          border: Border(bottom: BorderSide(color: ClubColors.border)),
+        padding: const EdgeInsets.symmetric(horizontal: 15),
+        decoration: BoxDecoration(
+          border: divider
+              ? const Border(bottom: BorderSide(color: ClubColors.border))
+              : null,
         ),
         child: Row(
           children: [
             Expanded(
               child: Text(label, style: ClubType.inter(14, color: color)),
             ),
-            if (detail != null)
+            if (detail != null) ...[
+              const SizedBox(width: 12),
               Text(
                 detail!,
                 style: ClubType.inter(
@@ -1308,8 +1405,8 @@ class SettingsRow extends StatelessWidget {
                   weight: FontWeight.w600,
                   height: 1.2,
                 ),
-              )
-            else
+              ),
+            ] else
               ClubIcon('chevron', size: 18, color: color),
           ],
         ),
@@ -1393,7 +1490,7 @@ class ActionBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final busy = MockScope.watch(context).busy;
+    final busy = AppScope.watch(context).busy;
     return Row(
       children: [
         Expanded(
@@ -1440,23 +1537,30 @@ class _Decision extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = filled ? ClubColors.paper : ClubColors.ink;
-    const radius = BorderRadius.all(Radius.circular(24));
+    const radius = BorderRadius.all(Radius.circular(17));
     return DecoratedBox(
       decoration: filled
-          ? const BoxDecoration(color: ClubColors.ink, borderRadius: radius)
-          : const BoxDecoration(
-              color: ClubColors.field,
+          ? const BoxDecoration(
+              color: Color(0xF21A1A1A),
               borderRadius: radius,
-              border: Border.fromBorderSide(BorderSide(color: ClubColors.ink)),
+              border: Border.fromBorderSide(
+                BorderSide(color: Color(0xD1000000)),
+              ),
+            )
+          : const BoxDecoration(
+              color: Color(0xC2FFFFFF),
+              borderRadius: radius,
+              border: Border.fromBorderSide(
+                BorderSide(color: Color(0xB8FFFFFF)),
+              ),
             ),
       child: Material(
         type: MaterialType.transparency,
         child: InkWell(
           onTap: loading ? null : onPressed,
           borderRadius: radius,
-          customBorder: const StadiumBorder(),
           child: SizedBox(
-            height: 48,
+            height: 52,
             child: loading
                 ? Center(child: ClubPulse(color: color, size: 6))
                 : Row(
@@ -1487,7 +1591,7 @@ class PhotoGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final model = MockScope.watch(context);
+    final model = AppScope.watch(context);
     return GridView.count(
       crossAxisCount: 3,
       shrinkWrap: true,
@@ -1511,7 +1615,7 @@ class _FilledPhoto extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final model = MockScope.read(context);
+    final model = AppScope.read(context);
     return GestureDetector(
       onTap: () => model.makePrimary(photo),
       child: Stack(
@@ -1567,7 +1671,7 @@ class _EmptyPhotoSlot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final model = MockScope.watch(context);
+    final model = AppScope.watch(context);
     return Material(
       color: ClubColors.field,
       shape: RoundedRectangleBorder(

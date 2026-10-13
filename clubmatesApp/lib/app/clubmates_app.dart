@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-import 'mock_model.dart';
-import 'screens/discover_screen.dart';
-import 'screens/onboarding_screens.dart';
-import 'screens/people_screens.dart';
-import 'screens/profile_screens.dart';
-import 'theme.dart';
+import '../screens/discover_screen.dart';
+import '../screens/onboarding_screens.dart';
+import '../screens/people_screens.dart';
+import '../screens/profile_screens.dart';
+import '../state/app_model.dart';
+import '../theme/theme.dart';
 
 class ClubmatesApp extends StatefulWidget {
   const ClubmatesApp({super.key});
@@ -15,7 +15,7 @@ class ClubmatesApp extends StatefulWidget {
 }
 
 class _ClubmatesAppState extends State<ClubmatesApp> {
-  final _model = MockModel();
+  final _model = AppModel();
 
   @override
   void dispose() {
@@ -25,7 +25,7 @@ class _ClubmatesAppState extends State<ClubmatesApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MockScope(
+    return AppScope(
       model: _model,
       child: MaterialApp(
         title: 'Clubmates',
@@ -61,9 +61,12 @@ class _ClubmatesAppState extends State<ClubmatesApp> {
               AppRoute.mateProfile => const PersonDetailScreen(
                 kind: AppRoute.mateProfile,
               ),
+              AppRoute.mateChat => const MateChatScreen(),
               AppRoute.profile => const ProfileScreen(),
               AppRoute.editProfile => const EditProfileScreen(),
               AppRoute.settings => const SettingsScreen(),
+              AppRoute.notifications => const NotificationsScreen(),
+              AppRoute.nearby => const NearbyScreen(),
               AppRoute.status => const StatusScreen(),
               AppRoute.error => const ErrorScreen(),
             };

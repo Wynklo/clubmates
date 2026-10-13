@@ -1,11 +1,12 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'data/clubmates_repository.dart';
-import 'data/records.dart';
-export 'data/records.dart'
+import '../data/clubmates_repository.dart';
+import '../data/records.dart';
+export '../data/records.dart'
     show
         bioIssue,
         cityIssue,
@@ -18,7 +19,7 @@ export 'data/records.dart'
         nameIssue,
         OwnPhoto,
         phoneIssue;
-import 'data/supabase_config.dart';
+import '../data/supabase_config.dart';
 
 enum AppRoute {
   splash,
@@ -41,17 +42,20 @@ enum AppRoute {
   inviteDetail,
   mates,
   mateProfile,
+  mateChat,
   profile,
   editProfile,
   settings,
+  notifications,
+  nearby,
   status,
   error,
 }
 
 enum AppTab { club, likes, mates, profile }
 
-class MockPerson {
-  const MockPerson({
+class Person {
+  const Person({
     this.id = '',
     required this.name,
     required this.age,
@@ -64,6 +68,8 @@ class MockPerson {
     this.verified = true,
     this.inviteId,
     this.mateId,
+    this.minutesAgo,
+    this.distanceKm,
   });
 
   final String id;
@@ -78,9 +84,26 @@ class MockPerson {
   final bool verified;
   final String? inviteId;
   final String? mateId;
+  final int? minutesAgo;
+  final double? distanceKm;
+
+  bool get recentlyActive => minutesAgo != null && minutesAgo! <= 20;
 }
 
-const meera = MockPerson(
+String? recentActivity(int? minutesAgo) {
+  if (minutesAgo == null || minutesAgo > 20) return null;
+  if (minutesAgo <= 1) return 'Active now';
+  return 'Active ${minutesAgo}m ago';
+}
+
+class ChatLine {
+  const ChatLine(this.text, {this.mine = true});
+
+  final String text;
+  final bool mine;
+}
+
+const meera = Person(
   name: 'Meera',
   age: 27,
   location: 'Indiranagar',
@@ -89,9 +112,11 @@ const meera = MockPerson(
   interests: ['Drinks', 'Food', 'Live Music'],
   photo: 'assets/photos/meera.jpg',
   preview: 'Dinner, then a bar in Indiranagar.',
+  minutesAgo: 4,
+  distanceKm: 3,
 );
 
-const kabir = MockPerson(
+const kabir = Person(
   name: 'Kabir',
   age: 29,
   location: 'Koramangala',
@@ -100,9 +125,11 @@ const kabir = MockPerson(
   interests: ['Drinks', 'Food', 'Live Music'],
   photo: 'assets/photos/kabir.jpg',
   preview: 'Live music and a late dinner.',
+  minutesAgo: 12,
+  distanceKm: 8,
 );
 
-const aria = MockPerson(
+const aria = Person(
   name: 'Aria',
   age: 26,
   location: 'Bandra',
@@ -111,9 +138,11 @@ const aria = MockPerson(
   interests: ['Drinks', 'Dinner', 'Live Music'],
   photo: 'assets/photos/aria.jpg',
   preview: 'Drinks, dinner, live music',
+  minutesAgo: 40,
+  distanceKm: 18,
 );
 
-const riya = MockPerson(
+const riya = Person(
   name: 'Riya',
   age: 25,
   location: 'Koregaon Park',
@@ -122,6 +151,8 @@ const riya = MockPerson(
   interests: ['Drinks', 'Food', 'Live Music'],
   photo: 'assets/photos/riya.jpg',
   preview: 'Tonight: rooftop drinks',
+  minutesAgo: 6,
+  distanceKm: 4,
 );
 
 const nightPhoto = 'assets/photos/night.jpg';
@@ -144,8 +175,11 @@ const cityOptions = ['Bengaluru', 'Mumbai', 'Delhi', 'Pune', 'Hyderabad'];
 
 const sexOptions = ['Woman', 'Man', 'Non-binary', 'Prefer not to say'];
 
-class MockModel extends ChangeNotifier {
-  MockModel({ClubmatesRepository? repository, ImagePicker? picker})
+/// Screen state for the phone app. Live reads and writes go through
+/// [ClubmatesRepository]. Sample people stay on this phone when Supabase
+/// is not configured.
+class AppModel extends ChangeNotifier {
+  AppModel({ClubmatesRepository? repository, ImagePicker? picker})
     : _api = repository ?? ClubmatesRepository(),
       _picker = picker ?? ImagePicker(),
       live = SupabaseConfig.isConfigured;
@@ -184,42 +218,56 @@ class MockModel extends ChangeNotifier {
   String idType = 'Aadhaar';
   bool uploaded = false;
   bool discoverable = true;
+  bool locationOn = false;
+  bool nearbyOnly = true;
+  AppRoute nearbyBack = AppRoute.profile;
+  bool notifyInvites = true;
+  bool notifyMates = true;
+  bool notifyNearby = false;
   bool showLikes = true;
   bool showMates = true;
   int profiles = 0;
   List<OwnPhoto> ownPhotos = [];
   List<BlockedPerson> blocked = [];
-  MockPerson? opened;
-  final List<MockPerson> _candidates = [];
-  final List<MockPerson> _incoming = [];
-  final List<MockPerson> _mateRows = [];
+  Person? opened;
+  final List<Person> _candidates = [];
+  final List<Person> _incoming = [];
+  final List<Person> _mateRows = [];
+  final Map<String, List<ChatLine>> _chats = {};
 
   AppTab get tab => switch (route) {
     AppRoute.likes || AppRoute.inviteDetail => AppTab.likes,
-    AppRoute.mates || AppRoute.mateProfile => AppTab.mates,
+    AppRoute.mates || AppRoute.mateProfile || AppRoute.mateChat => AppTab.mates,
     AppRoute.profile ||
     AppRoute.editProfile ||
     AppRoute.settings ||
+    AppRoute.notifications ||
+    AppRoute.nearby ||
     AppRoute.status ||
     AppRoute.error => AppTab.profile,
     _ => AppTab.club,
   };
 
-  MockPerson? get clubPerson {
-    if (!live) {
-      if (_interestedIn == 'MAN') return profiles == 0 ? kabir : null;
-      if (_interestedIn == 'WOMAN') return profiles == 0 ? meera : null;
-      if (_interestedIn == 'NON_BINARY') return null;
-      if (profiles > 1) return null;
-      return profiles == 0 ? meera : kabir;
-    }
-    if (_candidates.isEmpty) return null;
-    return _candidates.first;
+  Person? get clubPerson {
+    final people = clubPeople;
+    if (people.isEmpty) return null;
+    return people.first;
   }
 
-  List<MockPerson> get incoming => live ? _incoming : (showLikes ? [aria] : []);
+  List<Person> get clubPeople {
+    final source = live ? _candidates : _offlineClub();
+    final shown = source.where(_shownInClub).toList()
+      ..sort((a, b) => (a.minutesAgo ?? 999).compareTo(b.minutesAgo ?? 999));
+    if (!live) {
+      if (profiles >= shown.length) return const [];
+      return shown.skip(profiles).toList();
+    }
+    return shown;
+  }
 
-  List<MockPerson> get mateList => live ? _mateRows : (showMates ? [riya] : []);
+  List<Person> get incoming => live ? _incoming : (showLikes ? [aria] : []);
+
+  List<Person> get mateList => live ? _mateRows : (showMates ? [riya] : []);
 
   bool get isVerified => live ? _verified : true;
 
@@ -241,7 +289,7 @@ class MockModel extends ChangeNotifier {
     return live ? '' : ownPhoto;
   }
 
-  MockPerson personFor(AppRoute kind) {
+  Person personFor(AppRoute kind) {
     final current = opened;
     if (current != null) return current;
     return switch (kind) {
@@ -662,13 +710,13 @@ class MockModel extends ChangeNotifier {
     }
     if (person == null) return;
     if (person.id.isEmpty) {
-      if (_candidates.isNotEmpty) _candidates.removeAt(0);
+      _removeVisible(person);
       notifyListeners();
       return;
     }
     await _guard(() async {
       await _api.pass(person.id);
-      if (_candidates.isNotEmpty) _candidates.removeAt(0);
+      _removeVisible(person);
     });
   }
 
@@ -680,13 +728,13 @@ class MockModel extends ChangeNotifier {
     }
     if (person == null) return;
     if (person.id.isEmpty) {
-      if (_candidates.isNotEmpty) _candidates.removeAt(0);
+      _removeVisible(person);
       go(AppRoute.inviteSent);
       return;
     }
     await _guard(() async {
       await _api.invite(person.id);
-      if (_candidates.isNotEmpty) _candidates.removeAt(0);
+      _removeVisible(person);
       go(AppRoute.inviteSent);
     });
   }
@@ -705,9 +753,167 @@ class MockModel extends ChangeNotifier {
     go(AppRoute.club);
   }
 
-  void openPerson(MockPerson person, AppRoute next) {
+  void openPerson(Person person, AppRoute next) {
     opened = person;
     go(next);
+  }
+
+  void openChat() {
+    if (opened == null) return;
+    go(AppRoute.mateChat);
+  }
+
+  List<ChatLine> chatForOpened() {
+    final person = opened;
+    if (person == null) return const [];
+    return _chats[_chatKey(person)] ?? const [];
+  }
+
+  void sendChat(String text) {
+    final trimmed = text.trim();
+    final person = opened;
+    if (trimmed.isEmpty || person == null) return;
+    final key = _chatKey(person);
+    _chats[key] = [...?_chats[key], ChatLine(trimmed)];
+    notifyListeners();
+  }
+
+  void exploreClubsTogether() {
+    sendChat('Shared a plan: Explore clubs together');
+  }
+
+  void shareNearbyDrinks() {
+    sendChat('Shared a plan: Find drinks nearby');
+  }
+
+  void setNotify({bool? invites, bool? mates, bool? nearby}) {
+    if (invites != null) notifyInvites = invites;
+    if (mates != null) notifyMates = mates;
+    if (nearby != null) notifyNearby = nearby;
+    notifyListeners();
+  }
+
+  void chooseNearby() {
+    nearbyOnly = true;
+    errorMessage = null;
+    notifyListeners();
+  }
+
+  void openNearby({AppRoute back = AppRoute.profile}) {
+    nearbyBack = back;
+    go(AppRoute.nearby);
+  }
+
+  bool _savingLocation = false;
+  DateTime? _locationSavedAt;
+
+  Future<void> allowLocation() {
+    return captureLocation(interactive: true);
+  }
+
+  /// Asks for location from the Club screen and writes the point to the
+  /// signed-in profile. Other people do not receive the coordinates.
+  Future<void> captureLocation({bool interactive = false}) async {
+    if (!live || _savingLocation) return;
+    if (!interactive &&
+        _locationSavedAt != null &&
+        DateTime.now().difference(_locationSavedAt!) <
+            const Duration(minutes: 10)) {
+      return;
+    }
+    _savingLocation = true;
+    if (interactive) {
+      busy = true;
+      errorMessage = null;
+      notifyListeners();
+    }
+    try {
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      locationOn =
+          permission == LocationPermission.whileInUse ||
+          permission == LocationPermission.always;
+      if (!locationOn) {
+        if (interactive) {
+          errorMessage = 'Location stays off until you allow it in Settings.';
+        }
+        return;
+      }
+      final enabled = await Geolocator.isLocationServiceEnabled();
+      if (!enabled) {
+        locationOn = false;
+        if (interactive) {
+          errorMessage = 'Turn on Location Services to save where you are.';
+        }
+        return;
+      }
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 15),
+        ),
+      );
+      await _api.saveLocation(
+        latitude: position.latitude,
+        longitude: position.longitude,
+      );
+      _locationSavedAt = DateTime.now();
+      locationOn = true;
+      if (interactive) errorMessage = null;
+    } catch (_) {
+      if (interactive) errorMessage = 'Location could not be saved.';
+    } finally {
+      _savingLocation = false;
+      if (interactive) busy = false;
+      notifyListeners();
+    }
+  }
+
+  List<Person> _offlineClub() {
+    if (_interestedIn == 'MAN') return const [kabir];
+    if (_interestedIn == 'WOMAN') return const [meera];
+    if (_interestedIn == 'NON_BINARY') return const [];
+    return const [meera, kabir, aria, riya];
+  }
+
+  bool _shownInClub(Person person) {
+    if (person.minutesAgo != null && person.minutesAgo! > 20) return false;
+    final nearby = _isNearby(person);
+    return nearbyOnly ? nearby : !nearby;
+  }
+
+  bool _isNearby(Person person) {
+    if (!_sameArea(person.location, location)) return false;
+    final km = person.distanceKm;
+    return km == null || km <= 10;
+  }
+
+  bool _sameArea(String place, String city) {
+    const areas = {
+      'bengaluru': ['indiranagar', 'koramangala', 'bengaluru', 'bangalore'],
+      'bangalore': ['indiranagar', 'koramangala', 'bengaluru', 'bangalore'],
+      'mumbai': ['bandra', 'mumbai'],
+      'pune': ['koregaon park', 'pune'],
+      'delhi': ['delhi'],
+      'hyderabad': ['hyderabad'],
+    };
+    final key = city.trim().toLowerCase();
+    final names = areas[key] ?? [key];
+    final lowered = place.toLowerCase();
+    return names.any(lowered.contains) || lowered.contains(key);
+  }
+
+  void _removeVisible(Person person) {
+    final index = _candidates.indexWhere(
+      (item) => item.id == person.id && item.name == person.name,
+    );
+    if (index >= 0) _candidates.removeAt(index);
+  }
+
+  String _chatKey(Person person) {
+    return person.id.isEmpty ? person.name : person.id;
   }
 
   Future<void> passInvite() async {
@@ -840,6 +1046,25 @@ class MockModel extends ChangeNotifier {
     go(AppRoute.phone);
   }
 
+  Future<void> deleteAccount() async {
+    if (!live) {
+      _resetLocal();
+      go(AppRoute.phone);
+      return;
+    }
+    final removed = await _guard(() async {
+      await _api.deleteAccount();
+      try {
+        await _api.signOut();
+      } catch (_) {
+        // The auth user is already gone, so ending the session can fail.
+      }
+    });
+    if (!removed) return;
+    _resetLocal();
+    go(AppRoute.phone);
+  }
+
   Future<bool> _guard(Future<void> Function() action) async {
     if (busy) return false;
     busy = true;
@@ -893,7 +1118,7 @@ class MockModel extends ChangeNotifier {
     go(AppRoute.club);
   }
 
-  List<MockPerson> _sampleClub() {
+  List<Person> _sampleClub() {
     return const [meera, aria, riya, kabir];
   }
 
@@ -944,11 +1169,11 @@ class MockModel extends ChangeNotifier {
     }
   }
 
-  MockPerson _card(PublicPerson person) {
+  Person _card(PublicPerson person) {
     final preview = person.bio.trim().isEmpty
         ? 'Out tonight.'
         : person.bio.trim();
-    return MockPerson(
+    return Person(
       id: person.id,
       name: person.name,
       age: person.age,
@@ -990,6 +1215,9 @@ class MockModel extends ChangeNotifier {
     _candidates.clear();
     _incoming.clear();
     _mateRows.clear();
+    _chats.clear();
+    _locationSavedAt = null;
+    locationOn = false;
     errorMessage = null;
   }
 
@@ -1001,15 +1229,15 @@ class MockModel extends ChangeNotifier {
   }
 }
 
-class MockScope extends InheritedNotifier<MockModel> {
-  const MockScope({super.key, required MockModel model, required super.child})
+class AppScope extends InheritedNotifier<AppModel> {
+  const AppScope({super.key, required AppModel model, required super.child})
     : super(notifier: model);
 
-  static MockModel watch(BuildContext context) {
-    return context.dependOnInheritedWidgetOfExactType<MockScope>()!.notifier!;
+  static AppModel watch(BuildContext context) {
+    return context.dependOnInheritedWidgetOfExactType<AppScope>()!.notifier!;
   }
 
-  static MockModel read(BuildContext context) {
-    return context.getInheritedWidgetOfExactType<MockScope>()!.notifier!;
+  static AppModel read(BuildContext context) {
+    return context.getInheritedWidgetOfExactType<AppScope>()!.notifier!;
   }
 }
