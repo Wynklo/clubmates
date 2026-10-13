@@ -103,6 +103,7 @@ class ClubPulse extends StatefulWidget {
 class _ClubPulseState extends State<ClubPulse>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
+  var _motionReady = false;
 
   @override
   void initState() {
@@ -111,11 +112,21 @@ class _ClubPulseState extends State<ClubPulse>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     );
-    if (MediaQuery.disableAnimationsOf(context)) {
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final reduce = MediaQuery.disableAnimationsOf(context);
+    if (reduce) {
       _controller.value = 1;
-    } else {
-      _controller.repeat();
+      _controller.stop();
+      _motionReady = true;
+      return;
     }
+    if (_motionReady) return;
+    _motionReady = true;
+    _controller.repeat();
   }
 
   @override
@@ -744,6 +755,7 @@ class OnboardingFrame extends StatelessWidget {
       body: GestureDetector(
         onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
         child: Stack(
+          fit: StackFit.expand,
           children: [
             SafeArea(
               bottom: false,
@@ -950,18 +962,26 @@ class _BottomNavState extends State<BottomNav>
   late final AnimationController _slide;
   int _current = 0;
   int _previous = 0;
+  var _motionReady = false;
 
   @override
   void initState() {
     super.initState();
+    _slide = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 280),
+      value: 1,
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_motionReady) return;
+    _motionReady = true;
     final model = MockScope.read(context);
     _current = _indexOf(model.tab);
     _previous = model.lensFrom;
-    _slide = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 520),
-      value: 1,
-    );
     if (_previous != _current && !MediaQuery.disableAnimationsOf(context)) {
       _slide.value = 0;
       _slide.forward();
@@ -982,111 +1002,93 @@ class _BottomNavState extends State<BottomNav>
   @override
   Widget build(BuildContext context) {
     final reduce = ClubChrome.reduceTransparency(context);
+    const radius = BorderRadius.all(Radius.circular(296));
     return DecoratedBox(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(38),
+        borderRadius: radius,
         boxShadow: const [
           BoxShadow(
-            color: Color(0x2E1A1A1A),
-            blurRadius: 28,
-            offset: Offset(0, 10),
+            color: Color(0x1F000000),
+            blurRadius: 40,
+            offset: Offset(0, 8),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(38),
+        borderRadius: radius,
         child: BackdropFilter(
           filter: ImageFilter.blur(
-            sigmaX: reduce ? 0 : 28,
-            sigmaY: reduce ? 0 : 28,
+            sigmaX: reduce ? 0 : 24,
+            sigmaY: reduce ? 0 : 24,
           ),
           child: DecoratedBox(
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: reduce
-                    ? const [ClubColors.paper, ClubColors.paper]
-                    : [
-                        Colors.white.withValues(alpha: 0.58),
-                        const Color(0x8CF7F4F1),
-                      ],
-              ),
-              borderRadius: BorderRadius.circular(38),
+              color: reduce
+                  ? ClubColors.paper
+                  : Colors.white.withValues(alpha: 0.72),
+              borderRadius: radius,
               border: Border.all(
                 color: reduce
                     ? ClubColors.border
-                    : Colors.white.withValues(alpha: 0.9),
+                    : Colors.white.withValues(alpha: 0.8),
               ),
             ),
             child: SizedBox(
               height: ClubChrome.navHeight,
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  return AnimatedBuilder(
-                    animation: _slide,
-                    builder: (context, _) {
-                      final width = constraints.maxWidth;
-                      final slot = width / _tabs.length;
-                      final t = Curves.easeInOutCubic.transform(_slide.value);
-                      final from = (_previous + 0.5) * slot;
-                      final to = (_current + 0.5) * slot;
-                      final center = from + (to - from) * t;
-                      final stretch = math.sin(t * math.pi);
-                      final lens = (slot * (0.78 + stretch * 0.55)).clamp(
-                        64.0,
-                        width - 8,
-                      );
-                      final left = (center - lens / 2).clamp(
-                        4.0,
-                        width - lens - 4,
-                      );
-                      return Stack(
-                        children: [
-                          Positioned(
-                            left: left,
-                            top: 6,
-                            width: lens,
-                            height: ClubChrome.navHeight - 12,
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                borderRadius: const BorderRadius.all(
-                                  Radius.circular(30),
-                                ),
-                                gradient: LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [
-                                    Colors.white.withValues(alpha: 0.78),
-                                    ClubColors.soft.withValues(alpha: 0.62),
-                                  ],
-                                ),
-                                border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.95),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return AnimatedBuilder(
+                      animation: _slide,
+                      builder: (context, _) {
+                        final width = constraints.maxWidth;
+                        final slot = width / _tabs.length;
+                        final t = Curves.easeOutCubic.transform(_slide.value);
+                        final from = _previous * slot;
+                        final to = _current * slot;
+                        final left = (from + (to - from) * t - 2).clamp(
+                          0.0,
+                          (width - 4).clamp(0.0, width),
+                        );
+                        final pillWidth = (slot + 4).clamp(0.0, width - left);
+                        return Stack(
+                          children: [
+                            Positioned(
+                              left: left,
+                              top: 0,
+                              width: pillWidth,
+                              bottom: 0,
+                              child: const DecoratedBox(
+                                decoration: BoxDecoration(
+                                  color: Color(0xFFEDEDED),
+                                  borderRadius: BorderRadius.all(
+                                    Radius.circular(100),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                          Row(
-                            children: [
-                              for (var i = 0; i < _tabs.length; i++)
-                                Expanded(
-                                  child: _NavItem(
-                                    label: _tabs[i].$2,
-                                    icon: _tabs[i].$3,
-                                    selected: i == _current,
-                                    onTap: () => MockScope.read(
-                                      context,
-                                    ).goTab(_tabs[i].$1),
+                            Row(
+                              children: [
+                                for (var i = 0; i < _tabs.length; i++)
+                                  Expanded(
+                                    child: _NavItem(
+                                      label: _tabs[i].$2,
+                                      icon: _tabs[i].$3,
+                                      selected: i == _current,
+                                      onTap: () => MockScope.read(
+                                        context,
+                                      ).goTab(_tabs[i].$1),
+                                    ),
                                   ),
-                                ),
-                            ],
-                          ),
-                        ],
-                      );
-                    },
-                  );
-                },
+                              ],
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  },
+                ),
               ),
             ),
           ),
@@ -1120,14 +1122,15 @@ class _NavItem extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            ClubIcon(icon, size: 28, color: color),
-            const SizedBox(height: 4),
+            ClubIcon(icon, size: 18, color: color),
+            const SizedBox(height: 1),
             Text(
               label,
               style: ClubType.inter(
-                12,
+                10,
                 weight: FontWeight.w600,
-                height: 1.1,
+                height: 1.2,
+                letterSpacing: -0.1,
                 color: color,
               ),
             ),
@@ -1175,11 +1178,12 @@ class _MainShellState extends State<MainShell> {
       body: NotificationListener<ScrollNotification>(
         onNotification: _onScroll,
         child: Stack(
+          fit: StackFit.expand,
           children: [
             SafeArea(bottom: false, child: widget.child),
             Positioned(
-              left: 16,
-              right: 16,
+              left: 25,
+              right: 25,
               bottom: ClubChrome.barGap(context),
               child: AnimatedSlide(
                 offset: _shown ? Offset.zero : const Offset(0, 1.8),
@@ -1243,6 +1247,7 @@ class EmptyState extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 80),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             title,
