@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../club_icon.dart';
 import '../liquid_glass.dart';
 import '../mock_model.dart';
 import '../theme.dart';
@@ -56,17 +55,9 @@ class ProfileScreen extends StatelessWidget {
                   onPressed: () => model.go(AppRoute.editProfile),
                 ),
                 SettingsRow(
-                  'Edit photos',
-                  onPressed: () => model.go(AppRoute.editProfile),
-                ),
-                SettingsRow(
                   'Verification',
                   detail: model.isVerified ? 'Verified' : 'Not yet',
                   onPressed: () => model.go(AppRoute.status),
-                ),
-                SettingsRow(
-                  'Nightlife preferences',
-                  onPressed: () => model.go(AppRoute.editProfile),
                 ),
                 SettingsRow(
                   'Settings',
@@ -120,6 +111,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final bottom = MediaQuery.paddingOf(context).bottom;
     return Scaffold(
       body: Stack(
+        fit: StackFit.expand,
         children: [
           SafeArea(
             bottom: false,
@@ -136,34 +128,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 const SizedBox(height: 30),
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: SizedBox(
-                    width: 120,
-                    height: 140,
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        const ProfilePhoto(
-                          ownPhoto,
-                          width: 110,
-                          height: 130,
-                          radius: 14,
-                        ),
-                        const Positioned(
-                          right: 0,
-                          bottom: 0,
-                          child: LiquidGlass(
-                            borderRadius: BorderRadius.all(Radius.circular(21)),
-                            child: SizedBox(
-                              width: 42,
-                              height: 42,
-                              child: Center(
-                                child: ClubIcon('camera', size: 18),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                  child: ProfilePhoto(
+                    model.avatar,
+                    width: 110,
+                    height: 130,
+                    radius: 14,
                   ),
                 ),
                 const SizedBox(height: 28),
@@ -241,15 +210,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         selected: model.lookingFor == option,
                         onPressed: () => model.setLookingFor(option),
                       ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                const Eyebrow('Nightlife preferences'),
-                const SizedBox(height: 12),
-                ChipWrap(
-                  children: [
-                    for (final item in model.interests)
-                      ChoiceChipButton(item, selected: true),
                   ],
                 ),
                 const SizedBox(height: 20),
