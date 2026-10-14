@@ -9,9 +9,6 @@ const linkClass = "text-sm leading-none transition-colors duration-300 sm:text-[
 const earlyAccessButton =
   "inline-flex h-9 cursor-pointer items-center justify-center rounded-full px-3.5 text-[13px] font-semibold tracking-tight whitespace-nowrap transition-colors duration-300 sm:h-10 sm:px-4 sm:text-sm";
 
-let applyTone: ((onDark: boolean) => void) | null = null;
-let toneWatch: (() => void) | null = null;
-
 function headerIsOnDark() {
   const header = document.querySelector("header");
   if (!header) return false;
@@ -22,31 +19,21 @@ function headerIsOnDark() {
   });
 }
 
-function watchHeaderTone() {
-  if (toneWatch || typeof window === "undefined") return;
-  const update = () => applyTone?.(headerIsOnDark());
-  update();
-  window.addEventListener("scroll", update, { passive: true, capture: true });
-  window.addEventListener("resize", update);
-  toneWatch = () => {
-    window.removeEventListener("scroll", update, { capture: true });
-    window.removeEventListener("resize", update);
-    toneWatch = null;
-  };
-}
-
 export function Navbar() {
   const { open } = useEarlyAccess();
   const [onDark, setOnDark] = useState(false);
 
-  applyTone = (dark) => setOnDark((current) => (current === dark ? current : dark));
-  if (typeof window !== "undefined") watchHeaderTone();
-
   useEffect(() => {
-    watchHeaderTone();
-    applyTone?.(headerIsOnDark());
+    const update = () => {
+      const dark = headerIsOnDark();
+      setOnDark((current) => (current === dark ? current : dark));
+    };
+    update();
+    window.addEventListener("scroll", update, { passive: true, capture: true });
+    window.addEventListener("resize", update);
     return () => {
-      if (toneWatch) toneWatch();
+      window.removeEventListener("scroll", update, { capture: true });
+      window.removeEventListener("resize", update);
     };
   }, []);
 
