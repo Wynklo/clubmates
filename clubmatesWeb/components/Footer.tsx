@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
+import { StoreSoon } from "@/components/StoreSoon";
 
 export function Footer() {
   return (
@@ -11,6 +12,7 @@ export function Footer() {
             Find your people.
             <span className="block text-paper">Own the night.</span>
           </p>
+          <StoreSoon onDark />
         </div>
         <nav className="flex flex-col gap-3 text-sm leading-6 text-paper/80" aria-label="Footer">
           <p className="text-xs font-medium tracking-[0.16em] text-paper/45 uppercase">Explore</p>
