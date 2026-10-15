@@ -33,41 +33,41 @@ class LikesScreen extends StatelessWidget {
                 ),
               ),
             if (model.incoming.isNotEmpty)
-            for (final person in model.incoming)
-              _PersonRow(
-                person: person,
-                onOpen: () => model.openPerson(person, AppRoute.inviteDetail),
-                subtitle: person.interests.isEmpty
-                    ? person.preview
-                    : person.interests.join(', '),
-                actions: Row(
-                  children: [
-                    _SmallAction(
-                      'Pass',
-                      filled: false,
-                      onPressed: () {
-                        model.openPerson(person, AppRoute.likes);
-                        model.passInvite();
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    _SmallAction(
-                      'Accept',
-                      filled: true,
-                      onPressed: () {
-                        model.openPerson(person, AppRoute.likes);
-                        model.acceptInvite();
-                      },
-                    ),
-                  ],
-                ),
-              )
-          else
-            const EmptyState(
-              title: 'No invites yet.',
-              copy:
-                  "When someone wants to make a plan with you, they'll appear here.",
-            ),
+              for (final person in model.incoming)
+                _PersonRow(
+                  person: person,
+                  onOpen: () => model.openPerson(person, AppRoute.inviteDetail),
+                  subtitle: person.interests.isEmpty
+                      ? person.preview
+                      : person.interests.join(', '),
+                  actions: Row(
+                    children: [
+                      _SmallAction(
+                        'Pass',
+                        filled: false,
+                        onPressed: () {
+                          model.openPerson(person, AppRoute.likes);
+                          model.passInvite();
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      _SmallAction(
+                        'Accept',
+                        filled: true,
+                        onPressed: () {
+                          model.openPerson(person, AppRoute.likes);
+                          model.acceptInvite();
+                        },
+                      ),
+                    ],
+                  ),
+                )
+            else
+              const EmptyState(
+                title: 'No invites yet.',
+                copy:
+                    "When someone wants to make a plan with you, they'll appear here.",
+              ),
           ],
         ),
       ),
@@ -103,23 +103,23 @@ class MatesScreen extends StatelessWidget {
                 ),
               ),
             if (model.mateList.isNotEmpty)
-            for (final person in model.mateList)
-              _PersonRow(
-                person: person,
-                showChevron: true,
-                subtitle: person.tonight.trim().isEmpty
-                    ? person.preview
-                    : 'Tonight: ${person.tonight}',
-                onOpen: () => model.openPerson(person, AppRoute.mateProfile),
-              )
-          else
-            EmptyState(
-              title: 'No mates yet.',
-              copy:
-                  'Mutual invites become mates. Keep discovering people nearby.',
-              action: 'Explore Club',
-              onPressed: () => model.go(AppRoute.club),
-            ),
+              for (final person in model.mateList)
+                _PersonRow(
+                  person: person,
+                  showChevron: true,
+                  subtitle: person.tonight.trim().isEmpty
+                      ? person.preview
+                      : 'Tonight: ${person.tonight}',
+                  onOpen: () => model.openPerson(person, AppRoute.mateProfile),
+                )
+            else
+              EmptyState(
+                title: 'No mates yet.',
+                copy:
+                    'Mutual invites become mates. Keep discovering people nearby.',
+                action: 'Explore Club',
+                onPressed: () => model.go(AppRoute.club),
+              ),
           ],
         ),
       ),
@@ -149,88 +149,66 @@ class PersonDetailScreen extends StatelessWidget {
 
     final topInset = MediaQuery.paddingOf(context).top;
     final bottom = MediaQuery.paddingOf(context).bottom;
-    final heroHeight = MediaQuery.sizeOf(context).height * 0.6;
-    final backTop = topInset < 14 ? 14.0 : topInset;
+    final screenHeight = MediaQuery.sizeOf(context).height;
+    final heroHeight = screenHeight * 0.62 > 560 ? 560.0 : screenHeight * 0.62;
+    final status = tonightStatus(person.outTonightUntil);
+    final firstName = person.name.split(' ').first;
     return Scaffold(
       body: Stack(
         fit: StackFit.expand,
         children: [
           ListView(
-            padding: EdgeInsets.only(
-              bottom: kind == AppRoute.mateProfile
-                  ? bottom + 160
-                  : bottom + 110,
+            padding: EdgeInsets.fromLTRB(
+              12,
+              topInset + 8,
+              12,
+              kind == AppRoute.mateProfile ? bottom + 160 : bottom + 110,
             ),
             children: [
-              DecoratedBox(
-                decoration: const BoxDecoration(
-                  borderRadius: BorderRadius.vertical(
-                    bottom: Radius.circular(28),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color(0x2923141D),
-                      blurRadius: 50,
-                      offset: Offset(0, 18),
-                    ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    bottom: Radius.circular(28),
-                  ),
-                  child: Stack(
+              _DetailHero(
+                person: person,
+                height: heroHeight,
+                status: status,
+                onBack: () => model.go(back),
+              ),
+              const SizedBox(height: 12),
+              if (kind == AppRoute.mateProfile) ...[
+                _DetailCard(
+                  child: Row(
                     children: [
-                      ProfilePhoto(
-                        person.photo,
-                        height: heroHeight,
-                        width: double.infinity,
-                      ),
-                      Positioned(
-                        top: backTop,
-                        left: 14,
-                        child: GlassIconButton(onPressed: () => model.go(back)),
+                      const _MatchedLabel(),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'You are mates. Plan your night together.',
+                          style: ClubType.inter(
+                            13,
+                            color: ClubColors.muted,
+                            height: 1.35,
+                          ),
+                        ),
                       ),
                     ],
                   ),
                 ),
+                const SizedBox(height: 12),
+              ],
+              _DetailCard(
+                child: _CopyBlock('Their plan tonight', person.tonight),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 26, 20, 34),
+              if (person.usually.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                _DetailCard(
+                  child: _CopyBlock('Usually out for', person.usually),
+                ),
+              ],
+              const SizedBox(height: 12),
+              _DetailCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      '${person.name}, ${person.age}',
-                      style: ClubType.lora(27, height: 1.2),
-                    ),
-                    const SizedBox(height: 5),
-                    PlaceLine(person.location, verified: person.verified),
-                    const SizedBox(height: 24),
-                    const Divider(height: 1, color: ClubColors.border),
-                    if (kind == AppRoute.mateProfile) ...[
-                      const SizedBox(height: 14),
-                      Row(
-                        children: [
-                          const _MatchedLabel(),
-                          const Spacer(),
-                          if (tonightStatus(person.outTonightUntil) != null)
-                            _ActivityLine(tonightStatus(person.outTonightUntil)!),
-                        ],
-                      ),
-                    ] else if (tonightStatus(person.outTonightUntil) != null) ...[
-                      const SizedBox(height: 14),
-                      _ActivityLine(tonightStatus(person.outTonightUntil)!),
-                    ],
-                    const SizedBox(height: 26),
-                    _CopyBlock('Tonight', person.tonight),
-                    if (person.usually.isNotEmpty) ...[
-                      const SizedBox(height: 26),
-                      _CopyBlock('Usually out for', person.usually),
-                    ],
-                    const SizedBox(height: 26),
                     const Eyebrow('Interests'),
-                    const SizedBox(height: 7),
+                    const SizedBox(height: 10),
                     if (person.interests.isEmpty)
                       Text(
                         'No interests on this profile yet.',
@@ -243,38 +221,49 @@ class PersonDetailScreen extends StatelessWidget {
                             ChoiceChipButton(interest, compact: true),
                         ],
                       ),
-                    if (model.live && kind != AppRoute.mateProfile) ...[
-                      const SizedBox(height: 20),
-                      TextLink(
-                        'Block',
-                        color: ClubColors.error,
-                        onPressed: model.blockOpened,
-                      ),
-                    ],
-                    if (person.id.isEmpty) ...[
-                      const SizedBox(height: 26),
-                      const DecoratedBox(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.all(Radius.circular(22)),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Color(0x14281921),
-                              blurRadius: 24,
-                              offset: Offset(0, 8),
-                            ),
-                          ],
-                        ),
-                        child: ProfilePhoto(
-                          nightPhoto,
-                          height: 360,
-                          width: double.infinity,
-                          radius: 22,
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),
+              if (person.id.isEmpty) ...[
+                const SizedBox(height: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(22),
+                  child: const ProfilePhoto(
+                    nightPhoto,
+                    height: 360,
+                    width: double.infinity,
+                  ),
+                ),
+              ],
+              if (model.live && kind != AppRoute.mateProfile) ...[
+                const SizedBox(height: 20),
+                Center(
+                  child: TextButton.icon(
+                    onPressed: model.busy ? null : model.blockOpened,
+                    style: TextButton.styleFrom(
+                      foregroundColor: ClubColors.error,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 10,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(999),
+                        side: const BorderSide(color: ClubColors.border),
+                      ),
+                    ),
+                    icon: const Icon(Icons.block, size: 16),
+                    label: Text(
+                      'Block $firstName',
+                      style: ClubType.inter(
+                        13,
+                        color: ClubColors.error,
+                        weight: FontWeight.w600,
+                        height: 1,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
           if (kind == AppRoute.mateProfile) ...[
@@ -330,6 +319,157 @@ class PersonDetailScreen extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _DetailHero extends StatelessWidget {
+  const _DetailHero({
+    required this.person,
+    required this.height,
+    required this.status,
+    required this.onBack,
+  });
+
+  final Person person;
+  final double height;
+  final String? status;
+  final VoidCallback onBack;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: ClubColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x2923141D),
+            blurRadius: 40,
+            offset: Offset(0, 14),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: SizedBox(
+          height: height,
+          width: double.infinity,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              ProfilePhoto(person.photo),
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Color(0x47140C11),
+                      Color(0x00000000),
+                      Color(0x00000000),
+                      Color(0x8C140C11),
+                    ],
+                    stops: [0, 0.22, 0.55, 1],
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 12,
+                left: 12,
+                child: GlassIconButton(onPressed: onBack, clear: true),
+              ),
+              if (status != null)
+                Positioned(top: 19, right: 12, child: _HeroStatus(status!)),
+              Positioned(
+                left: 10,
+                right: 10,
+                bottom: 10,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: const Color(0x80181316),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0x47FFFFFF)),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${person.name}, ${person.age}',
+                          style: ClubType.lora(
+                            28,
+                            height: 1.05,
+                            color: Colors.white,
+                          ),
+                        ),
+                        if (person.location.isNotEmpty || person.verified) ...[
+                          const SizedBox(height: 6),
+                          PlaceLine(
+                            person.location,
+                            onDark: true,
+                            verified: person.verified,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HeroStatus extends StatelessWidget {
+  const _HeroStatus(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: const Color(0x80181316),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: const Color(0x5CFFFFFF)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
+        child: _ActivityLine(label, onDark: true),
+      ),
+    );
+  }
+}
+
+class _DetailCard extends StatelessWidget {
+  const _DetailCard({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: ClubColors.field,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0x171A1A1A)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0F281921),
+            blurRadius: 20,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        child: Padding(padding: const EdgeInsets.all(16), child: child),
       ),
     );
   }
@@ -446,10 +586,11 @@ class _PersonRow extends StatelessWidget {
 }
 
 class _ActivityLine extends StatelessWidget {
-  const _ActivityLine(this.label, {this.size = 10});
+  const _ActivityLine(this.label, {this.size = 10, this.onDark = false});
 
   final String label;
   final double size;
+  final bool onDark;
 
   @override
   Widget build(BuildContext context) {
@@ -476,7 +617,7 @@ class _ActivityLine extends StatelessWidget {
           label,
           style: ClubType.inter(
             size,
-            color: ClubColors.muted,
+            color: onDark ? Colors.white : ClubColors.muted,
             weight: FontWeight.w600,
             height: 1,
           ),
