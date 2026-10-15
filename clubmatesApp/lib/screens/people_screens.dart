@@ -5,11 +5,12 @@ import 'package:flutter/material.dart';
 import '../state/app_model.dart';
 import '../theme/theme.dart';
 import '../ui/club_icon.dart';
+import '../ui/club_swipe.dart';
 import '../ui/liquid_glass.dart';
 import '../ui/widgets.dart';
 
-class LikesScreen extends StatelessWidget {
-  const LikesScreen({super.key});
+class InvitesScreen extends StatelessWidget {
+  const InvitesScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +47,7 @@ class LikesScreen extends StatelessWidget {
                         'Pass',
                         filled: false,
                         onPressed: () {
-                          model.openPerson(person, AppRoute.likes);
+                          model.openPerson(person, AppRoute.invites);
                           model.passInvite();
                         },
                       ),
@@ -55,7 +56,7 @@ class LikesScreen extends StatelessWidget {
                         'Accept',
                         filled: true,
                         onPressed: () {
-                          model.openPerson(person, AppRoute.likes);
+                          model.openPerson(person, AppRoute.invites);
                           model.acceptInvite();
                         },
                       ),
@@ -137,7 +138,7 @@ class PersonDetailScreen extends StatelessWidget {
     final model = AppScope.watch(context);
     final person = model.personFor(kind);
     final back = switch (kind) {
-      AppRoute.inviteDetail => AppRoute.likes,
+      AppRoute.inviteDetail => AppRoute.invites,
       AppRoute.mateProfile => AppRoute.mates,
       _ => AppRoute.club,
     };
@@ -157,114 +158,116 @@ class PersonDetailScreen extends StatelessWidget {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          ListView(
-            padding: EdgeInsets.fromLTRB(
-              12,
-              topInset + 8,
-              12,
-              kind == AppRoute.mateProfile ? bottom + 160 : bottom + 110,
-            ),
-            children: [
-              _DetailHero(
-                person: person,
-                height: heroHeight,
-                status: status,
-                onBack: () => model.go(back),
+          PinnedBackPage(
+            onBack: () => model.go(back),
+            left: 24,
+            top: 20,
+            fadeAfter: heroHeight - 56,
+            clearUntilFade: true,
+            child: ListView(
+              padding: EdgeInsets.fromLTRB(
+                12,
+                topInset + 8,
+                12,
+                kind == AppRoute.mateProfile ? bottom + 160 : bottom + 120,
               ),
-              const SizedBox(height: 12),
-              if (kind == AppRoute.mateProfile) ...[
-                _DetailCard(
-                  child: Row(
-                    children: [
-                      const _MatchedLabel(),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'You are mates. Plan your night together.',
-                          style: ClubType.inter(
-                            13,
-                            color: ClubColors.muted,
-                            height: 1.35,
+              children: [
+                _DetailHero(person: person, height: heroHeight, status: status),
+                const SizedBox(height: 12),
+                if (kind == AppRoute.mateProfile) ...[
+                  _DetailCard(
+                    child: Row(
+                      children: [
+                        const _MatchedLabel(),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'You are mates. Plan your night together.',
+                            style: ClubType.inter(
+                              13,
+                              color: ClubColors.muted,
+                              height: 1.35,
+                            ),
                           ),
                         ),
-                      ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                _DetailCard(
+                  child: _CopyBlock('Their plan tonight', person.tonight),
+                ),
+                if (person.usually.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  _DetailCard(
+                    child: _CopyBlock('Usually out for', person.usually),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                _DetailCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Eyebrow('Interests'),
+                      const SizedBox(height: 10),
+                      if (person.interests.isEmpty)
+                        Text(
+                          'No interests on this profile yet.',
+                          style: ClubType.inter(14, color: ClubColors.muted),
+                        )
+                      else
+                        ChipWrap(
+                          children: [
+                            for (final interest in person.interests)
+                              ChoiceChipButton(interest, compact: true),
+                          ],
+                        ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 12),
-              ],
-              _DetailCard(
-                child: _CopyBlock('Their plan tonight', person.tonight),
-              ),
-              if (person.usually.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                _DetailCard(
-                  child: _CopyBlock('Usually out for', person.usually),
-                ),
-              ],
-              const SizedBox(height: 12),
-              _DetailCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Eyebrow('Interests'),
-                    const SizedBox(height: 10),
-                    if (person.interests.isEmpty)
-                      Text(
-                        'No interests on this profile yet.',
-                        style: ClubType.inter(14, color: ClubColors.muted),
-                      )
-                    else
-                      ChipWrap(
-                        children: [
-                          for (final interest in person.interests)
-                            ChoiceChipButton(interest, compact: true),
-                        ],
-                      ),
-                  ],
-                ),
-              ),
-              if (person.id.isEmpty) ...[
-                const SizedBox(height: 12),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(22),
-                  child: const ProfilePhoto(
-                    nightPhoto,
-                    height: 360,
-                    width: double.infinity,
-                  ),
-                ),
-              ],
-              if (model.live && kind != AppRoute.mateProfile) ...[
-                const SizedBox(height: 20),
-                Center(
-                  child: TextButton.icon(
-                    onPressed: model.busy ? null : model.blockOpened,
-                    style: TextButton.styleFrom(
-                      foregroundColor: ClubColors.error,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 18,
-                        vertical: 10,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(999),
-                        side: const BorderSide(color: ClubColors.border),
-                      ),
+                if (person.id.isEmpty) ...[
+                  const SizedBox(height: 12),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(22),
+                    child: const ProfilePhoto(
+                      nightPhoto,
+                      height: 360,
+                      width: double.infinity,
                     ),
-                    icon: const Icon(Icons.block, size: 16),
-                    label: Text(
-                      'Block $firstName',
-                      style: ClubType.inter(
-                        13,
-                        color: ClubColors.error,
-                        weight: FontWeight.w600,
-                        height: 1,
+                  ),
+                ],
+                if (model.live && kind != AppRoute.mateProfile) ...[
+                  const SizedBox(height: 20),
+                  Center(
+                    child: TextButton.icon(
+                      onPressed: model.busy ? null : model.blockOpened,
+                      style: TextButton.styleFrom(
+                        foregroundColor: ClubColors.error,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 10,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(999),
+                          side: const BorderSide(color: ClubColors.border),
+                        ),
+                      ),
+                      icon: const Icon(Icons.block, size: 16),
+                      label: Text(
+                        'Block $firstName',
+                        style: ClubType.inter(
+                          13,
+                          color: ClubColors.error,
+                          weight: FontWeight.w600,
+                          height: 1,
+                        ),
                       ),
                     ),
                   ),
-                ),
+                ],
               ],
-            ],
+            ),
           ),
           if (kind == AppRoute.mateProfile) ...[
             Positioned(
@@ -297,25 +300,51 @@ class PersonDetailScreen extends StatelessWidget {
             ),
           ] else
             Positioned(
-              left: 12,
-              right: 12,
-              bottom: bottom < 10 ? 10 : bottom,
-              child: _DetailActions(
-                inviteLabel: inviteLabel,
-                onPass: () {
-                  if (kind == AppRoute.inviteDetail) {
-                    model.passInvite();
-                  } else {
-                    model.passClub();
-                  }
-                },
-                onInvite: () {
-                  if (kind == AppRoute.inviteDetail) {
-                    model.acceptInvite();
-                  } else {
-                    model.inviteClub();
-                  }
-                },
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      ClubColors.paper.withValues(alpha: 0),
+                      ClubColors.paper.withValues(alpha: 0.92),
+                      ClubColors.paper,
+                    ],
+                    stops: const [0, 0.38, 1],
+                  ),
+                ),
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    34,
+                    16,
+                    bottom < 14 ? 14 : bottom,
+                  ),
+                  child: DecisionButtons(
+                    busy: model.busy,
+                    inviteLabel: inviteLabel,
+                    inviteIcon: kind == AppRoute.inviteDetail
+                        ? 'check'
+                        : 'send',
+                    onPass: () {
+                      if (kind == AppRoute.inviteDetail) {
+                        model.passInvite();
+                      } else {
+                        model.passClub();
+                      }
+                    },
+                    onInvite: () {
+                      if (kind == AppRoute.inviteDetail) {
+                        model.acceptInvite();
+                      } else {
+                        model.inviteClub();
+                      }
+                    },
+                  ),
+                ),
               ),
             ),
         ],
@@ -329,13 +358,11 @@ class _DetailHero extends StatelessWidget {
     required this.person,
     required this.height,
     required this.status,
-    required this.onBack,
   });
 
   final Person person;
   final double height;
   final String? status;
-  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {
@@ -374,11 +401,6 @@ class _DetailHero extends StatelessWidget {
                     stops: [0, 0.22, 0.55, 1],
                   ),
                 ),
-              ),
-              Positioned(
-                top: 12,
-                left: 12,
-                child: GlassIconButton(onPressed: onBack, clear: true),
               ),
               if (status != null)
                 Positioned(top: 19, right: 12, child: _HeroStatus(status!)),
@@ -697,123 +719,6 @@ class _SmallAction extends StatelessWidget {
                     ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _DetailActions extends StatelessWidget {
-  const _DetailActions({
-    required this.inviteLabel,
-    required this.onPass,
-    required this.onInvite,
-  });
-
-  final String inviteLabel;
-  final VoidCallback onPass;
-  final VoidCallback onInvite;
-
-  @override
-  Widget build(BuildContext context) {
-    final busy = AppScope.watch(context).busy;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: const Color(0xF7FFFFFF),
-        borderRadius: BorderRadius.circular(23),
-        border: Border.all(color: const Color(0xB8FFFFFF)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x1F24171F),
-            blurRadius: 32,
-            offset: Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(7),
-        child: Row(
-          children: [
-            Expanded(
-              flex: 2,
-              child: _DetailButton(
-                label: 'Pass',
-                icon: 'close',
-                filled: false,
-                loading: busy,
-                onPressed: onPass,
-              ),
-            ),
-            const SizedBox(width: 7),
-            Expanded(
-              flex: 3,
-              child: _DetailButton(
-                label: inviteLabel,
-                icon: 'check',
-                filled: true,
-                loading: busy,
-                onPressed: onInvite,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _DetailButton extends StatelessWidget {
-  const _DetailButton({
-    required this.label,
-    required this.icon,
-    required this.filled,
-    required this.loading,
-    required this.onPressed,
-  });
-
-  final String label;
-  final String icon;
-  final bool filled;
-  final bool loading;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = filled ? ClubColors.paper : ClubColors.ink;
-    const radius = BorderRadius.all(Radius.circular(17));
-    return Material(
-      color: filled ? ClubColors.ink : ClubColors.field,
-      shape: RoundedRectangleBorder(
-        borderRadius: radius,
-        side: BorderSide(color: filled ? ClubColors.ink : ClubColors.border),
-      ),
-      child: InkWell(
-        onTap: loading ? null : onPressed,
-        borderRadius: radius,
-        child: SizedBox(
-          height: 52,
-          child: loading
-              ? Center(child: ClubPulse(color: color, size: 6))
-              : Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    ClubIcon(icon, size: 20, color: color),
-                    const SizedBox(width: 7),
-                    Flexible(
-                      child: Text(
-                        label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: ClubType.inter(
-                          16,
-                          weight: FontWeight.w600,
-                          height: 1,
-                          color: color,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
         ),
       ),
     );

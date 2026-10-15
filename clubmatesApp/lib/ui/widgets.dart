@@ -1,9 +1,15 @@
 import 'dart:io';
 import 'dart:math' as math;
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart'
+    show
+        AnimatedGlassIndicator,
+        GlassQuality,
+        GlassTab,
+        GlassTabBar,
+        LiquidGlassSettings;
 
 import '../state/app_model.dart';
 import '../theme/theme.dart';
@@ -941,6 +947,101 @@ class GlassIconButton extends StatelessWidget {
   }
 }
 
+/// Keeps the back button at the top of the screen while [child] scrolls
+/// under it. A soft fade appears behind the button once the page scrolls.
+/// [child] should leave [GlassIconButton]-sized room at the top.
+class PinnedBackPage extends StatefulWidget {
+  const PinnedBackPage({
+    super.key,
+    required this.onBack,
+    required this.child,
+    this.left = 20,
+    this.top = 8,
+    this.fadeAfter = 4,
+    this.clearUntilFade = false,
+  });
+
+  final VoidCallback onBack;
+  final Widget child;
+  final double left;
+  final double top;
+
+  /// Scroll offset after which the fade shows.
+  final double fadeAfter;
+
+  /// Use the dark button (for photos) until the fade shows.
+  final bool clearUntilFade;
+
+  @override
+  State<PinnedBackPage> createState() => _PinnedBackPageState();
+}
+
+class _PinnedBackPageState extends State<PinnedBackPage> {
+  var _scrolled = false;
+
+  bool _onScroll(ScrollNotification note) {
+    if (note.depth != 0 || note.metrics.axis != Axis.vertical) return false;
+    final scrolled = note.metrics.pixels > widget.fadeAfter;
+    if (scrolled != _scrolled) setState(() => _scrolled = scrolled);
+    return false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final safeTop = MediaQuery.paddingOf(context).top;
+    final motionOff = MediaQuery.disableAnimationsOf(context);
+    final duration = Duration(milliseconds: motionOff ? 0 : 200);
+    final buttonTop = safeTop + widget.top;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        NotificationListener<ScrollNotification>(
+          onNotification: _onScroll,
+          child: widget.child,
+        ),
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          height: buttonTop + 44 + 18,
+          child: IgnorePointer(
+            child: AnimatedOpacity(
+              opacity: _scrolled ? 1 : 0,
+              duration: duration,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      ClubColors.paper,
+                      ClubColors.paper.withValues(alpha: 0.88),
+                      ClubColors.paper.withValues(alpha: 0),
+                    ],
+                    stops: const [0, 0.62, 1],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        Positioned(
+          top: buttonTop,
+          left: widget.left,
+          child: AnimatedSwitcher(
+            duration: duration,
+            child: GlassIconButton(
+              key: ValueKey(widget.clearUntilFade && !_scrolled),
+              onPressed: widget.onBack,
+              clear: widget.clearUntilFade && !_scrolled,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class CenteredScreen extends StatelessWidget {
   const CenteredScreen({super.key, required this.children});
 
@@ -990,137 +1091,90 @@ class SuccessMark extends StatelessWidget {
   }
 }
 
-class BottomNav extends StatefulWidget {
+class BottomNav extends StatelessWidget {
   const BottomNav({super.key});
 
-  @override
-  State<BottomNav> createState() => _BottomNavState();
-}
-
-class _BottomNavState extends State<BottomNav>
-    with SingleTickerProviderStateMixin {
   static const _tabs = [
     (AppTab.club, 'Club', 'club'),
-    (AppTab.likes, 'Likes', 'heart'),
+    (AppTab.invites, 'Invites', 'heart'),
     (AppTab.mates, 'Mates', 'mates'),
     (AppTab.profile, 'Profile', 'profile'),
   ];
 
-  late final AnimationController _slide;
-  int _current = 0;
-  int _previous = 0;
-  var _motionReady = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _slide = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 280),
-      value: 1,
-    );
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_motionReady) return;
-    _motionReady = true;
-    final model = AppScope.read(context);
-    _current = _indexOf(model.tab);
-    _previous = model.lensFrom;
-    if (_previous != _current && !MediaQuery.disableAnimationsOf(context)) {
-      _slide.value = 0;
-      _slide.forward();
-    }
-  }
-
-  int _indexOf(AppTab tab) {
-    final index = _tabs.indexWhere((item) => item.$1 == tab);
-    return index < 0 ? 0 : index;
-  }
-
-  @override
-  void dispose() {
-    _slide.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
+    final model = AppScope.watch(context);
+    final selected = _tabs.indexWhere((item) => item.$1 == model.tab);
+    int badgeFor(AppTab tab) => switch (tab) {
+      AppTab.invites => model.incoming.length,
+      _ => 0,
+    };
     return SizedBox(
       height: ClubChrome.barFrameHeight,
       child: Padding(
-        padding: ClubChrome.barFramePadding,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            const Positioned(
-              left: -4,
-              right: -4,
-              top: -4,
-              bottom: -4,
-              child: _TabBarGlass(),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 2),
-              child: SizedBox(
-                height: ClubChrome.navHeight,
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    return AnimatedBuilder(
-                      animation: _slide,
-                      builder: (context, _) {
-                        final width = constraints.maxWidth;
-                        final slot = width / _tabs.length;
-                        final t = Curves.easeOutCubic.transform(_slide.value);
-                        final from = _previous * slot;
-                        final to = _current * slot;
-                        final left = (from + (to - from) * t - 2).clamp(
-                          0.0,
-                          (width - 4).clamp(0.0, width),
-                        );
-                        final pillWidth = (slot + 4).clamp(0.0, width - left);
-                        return Stack(
-                          children: [
-                            Positioned(
-                              left: left,
-                              top: 0,
-                              width: pillWidth,
-                              bottom: 0,
-                              child: const DecoratedBox(
-                                decoration: BoxDecoration(
-                                  color: Color(0xFFEDEDED),
-                                  borderRadius: BorderRadius.all(
-                                    Radius.circular(100),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                for (var i = 0; i < _tabs.length; i++)
-                                  Expanded(
-                                    child: _NavItem(
-                                      label: _tabs[i].$2,
-                                      icon: _tabs[i].$3,
-                                      selected: i == _current,
-                                      onTap: () => AppScope.read(
-                                        context,
-                                      ).goTab(_tabs[i].$1),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ],
-                        );
-                      },
-                    );
-                  },
+        padding: const EdgeInsets.only(top: 14, bottom: 19),
+        child: GlassTabBar.bottom(
+          selectedIndex: selected < 0 ? 0 : selected,
+          onTabSelected: (index) {
+            if (index == selected) return;
+            HapticFeedback.selectionClick();
+            model.goTab(_tabs[index].$1);
+          },
+          horizontalPadding: 25,
+          verticalPadding: 0,
+          barHeight: 62,
+          quality: GlassQuality.premium,
+          settings: LiquidGlassSettings.ios27Light,
+          indicatorColor: const Color(0x14994EA8),
+          indicatorSettings: AnimatedGlassIndicator.baseIndicatorSettings
+              .copyWith(
+                thickness: 30,
+                refractiveIndex: 1.3,
+                chromaticAberration: 0.45,
+                lightIntensity: 0.9,
+              ),
+          indicatorExpansion: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 12,
+          ),
+          magnification: 1.3,
+          pressScale: 1.06,
+          iconSize: 22,
+          labelFontSize: 10,
+          selectedLabelColor: ClubColors.brand,
+          unselectedLabelColor: ClubColors.ink,
+          selectedLabelStyle: ClubType.inter(
+            10,
+            weight: FontWeight.w600,
+            letterSpacing: -0.1,
+            color: ClubColors.brand,
+          ),
+          unselectedLabelStyle: ClubType.inter(
+            10,
+            weight: FontWeight.w600,
+            color: ClubColors.ink,
+          ),
+          tabs: [
+            for (final tab in _tabs)
+              GlassTab(
+                label: tab.$2,
+                semanticLabel: badgeFor(tab.$1) > 0
+                    ? '${tab.$2}, ${badgeFor(tab.$1)} new'
+                    : null,
+                icon: _TabBadge(
+                  count: badgeFor(tab.$1),
+                  child: ClubIcon(tab.$3, size: 22, color: ClubColors.ink),
+                ),
+                activeIcon: _TabBadge(
+                  count: badgeFor(tab.$1),
+                  child: ClubIcon(
+                    tab.$3,
+                    size: 22,
+                    color: ClubColors.brand,
+                    filled: true,
+                  ),
                 ),
               ),
-            ),
           ],
         ),
       ),
@@ -1128,121 +1182,89 @@ class _BottomNavState extends State<BottomNav>
   }
 }
 
-class _TabBarGlass extends StatelessWidget {
-  const _TabBarGlass();
+/// iOS-style red count bubble on the top-right of a tab icon.
+class _TabBadge extends StatelessWidget {
+  const _TabBadge({required this.count, required this.child});
 
-  static const _radius = BorderRadius.all(Radius.circular(296));
-  static const _shadow = [
-    BoxShadow(color: Color(0x1F000000), blurRadius: 40, offset: Offset(0, 8)),
-  ];
+  final int count;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    final reduce = ClubChrome.reduceTransparency(context);
-    if (reduce) {
-      return const DecoratedBox(
-        decoration: BoxDecoration(
-          color: Color(0xFFF7F7F7),
-          borderRadius: _radius,
-          boxShadow: _shadow,
-        ),
-      );
-    }
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        borderRadius: _radius,
-        boxShadow: _shadow,
-      ),
-      child: ClipRRect(
-        borderRadius: _radius,
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-          child: BackdropFilter(
-            filter: ColorFilter.mode(Color(0xA6FFFFFF), BlendMode.srcOver),
-            child: BackdropFilter(
-              filter: ColorFilter.mode(Color(0xFFDDDDDD), BlendMode.colorBurn),
-              child: BackdropFilter(
-                filter: ColorFilter.mode(Color(0xFFF7F7F7), BlendMode.darken),
-                child: SizedBox.expand(),
+    final motionOff = MediaQuery.disableAnimationsOf(context);
+    final text = count > 99 ? '99+' : '$count';
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        child,
+        Positioned(
+          top: -7,
+          left: 13,
+          child: AnimatedScale(
+            scale: count > 0 ? 1 : 0,
+            duration: Duration(milliseconds: motionOff ? 0 : 320),
+            curve: count > 0 ? Curves.elasticOut : Curves.easeIn,
+            child: AnimatedSwitcher(
+              duration: Duration(milliseconds: motionOff ? 0 : 200),
+              transitionBuilder: (child, animation) =>
+                  ScaleTransition(scale: animation, child: child),
+              child: Container(
+                key: ValueKey(text),
+                constraints: const BoxConstraints(minWidth: 18),
+                height: 18,
+                padding: const EdgeInsets.symmetric(horizontal: 5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFF3B30),
+                  borderRadius: BorderRadius.circular(9),
+                  border: Border.all(color: Colors.white, width: 1.5),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x33FF3B30),
+                      blurRadius: 6,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  text,
+                  style: ClubType.inter(
+                    10.5,
+                    weight: FontWeight.w700,
+                    height: 1,
+                    color: Colors.white,
+                  ),
+                ),
               ),
             ),
           ),
         ),
-      ),
+      ],
     );
   }
 }
 
-class _NavItem extends StatelessWidget {
-  const _NavItem({
-    required this.label,
-    required this.icon,
-    required this.selected,
-    required this.onTap,
-  });
+/// Holds the tab bar for Club, Invites, Mates and Profile. It stays mounted
+/// while the tab changes, so the glass indicator glides between tabs and
+/// the screens cross-fade underneath it.
+class TabChrome extends StatefulWidget {
+  const TabChrome({super.key, required this.tab, required this.child});
 
-  final String label;
-  final String icon;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = selected ? ClubColors.brand : ClubColors.ink;
-    return Material(
-      type: MaterialType.transparency,
-      child: InkWell(
-        onTap: onTap,
-        customBorder: const StadiumBorder(),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(8, 6, 8, 7),
-          child: Column(
-            children: [
-              SizedBox(
-                height: 28,
-                child: Center(
-                  child: ClubIcon(
-                    icon,
-                    size: 22,
-                    color: color,
-                    filled: selected,
-                  ),
-                ),
-              ),
-              SizedBox(height: selected ? 1 : 0.5),
-              SizedBox(
-                height: 12,
-                child: Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  style: ClubType.inter(
-                    10,
-                    weight: FontWeight.w600,
-                    height: 1.2,
-                    letterSpacing: selected ? -0.1 : 0,
-                    color: color,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class MainShell extends StatefulWidget {
-  const MainShell({super.key, required this.child});
-
+  final AppTab tab;
   final Widget child;
 
   @override
-  State<MainShell> createState() => _MainShellState();
+  State<TabChrome> createState() => _TabChromeState();
 }
 
-class _MainShellState extends State<MainShell> {
+class _TabChromeState extends State<TabChrome> {
   var _shown = true;
+
+  @override
+  void didUpdateWidget(TabChrome old) {
+    super.didUpdateWidget(old);
+    if (old.tab != widget.tab) _shown = true;
+  }
 
   bool _onScroll(ScrollNotification note) {
     if (note.metrics.axis != Axis.vertical) return false;
@@ -1265,28 +1287,59 @@ class _MainShellState extends State<MainShell> {
   @override
   Widget build(BuildContext context) {
     final motionOff = MediaQuery.disableAnimationsOf(context);
-    return Scaffold(
-      body: NotificationListener<ScrollNotification>(
-        onNotification: _onScroll,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            SafeArea(bottom: false, child: widget.child),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: AnimatedSlide(
-                offset: _shown ? Offset.zero : const Offset(0, 1.8),
-                duration: Duration(milliseconds: motionOff ? 0 : 240),
-                curve: Curves.easeOutCubic,
+    return Material(
+      color: ClubColors.paper,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          NotificationListener<ScrollNotification>(
+            onNotification: _onScroll,
+            child: AnimatedSwitcher(
+              duration: Duration(milliseconds: motionOff ? 0 : 260),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder: (child, animation) => FadeTransition(
+                opacity: animation,
+                child: ScaleTransition(
+                  scale: Tween(begin: 0.985, end: 1.0).animate(animation),
+                  child: child,
+                ),
+              ),
+              child: KeyedSubtree(
+                key: ValueKey(widget.tab),
+                child: widget.child,
+              ),
+            ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: AnimatedSlide(
+              offset: _shown ? Offset.zero : const Offset(0, 1.6),
+              duration: Duration(milliseconds: motionOff ? 0 : 380),
+              curve: _shown ? Curves.easeOutBack : Curves.easeInCubic,
+              child: AnimatedOpacity(
+                opacity: _shown ? 1 : 0,
+                duration: Duration(milliseconds: motionOff ? 0 : 220),
                 child: const BottomNav(),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
+  }
+}
+
+class MainShell extends StatelessWidget {
+  const MainShell({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(body: SafeArea(bottom: false, child: child));
   }
 }
 
@@ -1473,116 +1526,6 @@ class ProfilePhoto extends StatelessWidget {
             alignment: alignment,
           );
     return ClipRRect(borderRadius: BorderRadius.circular(radius), child: child);
-  }
-}
-
-class ActionBar extends StatelessWidget {
-  const ActionBar({
-    super.key,
-    required this.onPass,
-    required this.onInvite,
-    this.inviteLabel = 'Invite',
-  });
-
-  final VoidCallback onPass;
-  final VoidCallback onInvite;
-  final String inviteLabel;
-
-  @override
-  Widget build(BuildContext context) {
-    final busy = AppScope.watch(context).busy;
-    return Row(
-      children: [
-        Expanded(
-          flex: 2,
-          child: _Decision(
-            label: 'Pass',
-            icon: 'close',
-            filled: false,
-            loading: busy,
-            onPressed: onPass,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          flex: 3,
-          child: _Decision(
-            label: inviteLabel,
-            icon: 'check',
-            filled: true,
-            loading: busy,
-            onPressed: onInvite,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _Decision extends StatelessWidget {
-  const _Decision({
-    required this.label,
-    required this.icon,
-    required this.filled,
-    required this.onPressed,
-    required this.loading,
-  });
-
-  final String label;
-  final String icon;
-  final bool filled;
-  final VoidCallback onPressed;
-  final bool loading;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = filled ? ClubColors.paper : ClubColors.ink;
-    const radius = BorderRadius.all(Radius.circular(17));
-    return DecoratedBox(
-      decoration: filled
-          ? const BoxDecoration(
-              color: Color(0xF21A1A1A),
-              borderRadius: radius,
-              border: Border.fromBorderSide(
-                BorderSide(color: Color(0xD1000000)),
-              ),
-            )
-          : const BoxDecoration(
-              color: Color(0xC2FFFFFF),
-              borderRadius: radius,
-              border: Border.fromBorderSide(
-                BorderSide(color: Color(0xB8FFFFFF)),
-              ),
-            ),
-      child: Material(
-        type: MaterialType.transparency,
-        child: InkWell(
-          onTap: loading ? null : onPressed,
-          borderRadius: radius,
-          child: SizedBox(
-            height: 52,
-            child: loading
-                ? Center(child: ClubPulse(color: color, size: 6))
-                : Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      ClubIcon(icon, color: color),
-                      const SizedBox(width: 8),
-                      Text(
-                        label,
-                        style: ClubType.inter(
-                          16,
-                          weight: FontWeight.w600,
-                          height: 1,
-                          color: color,
-                        ),
-                      ),
-                    ],
-                  ),
-          ),
-        ),
-      ),
-    );
   }
 }
 

@@ -47,21 +47,20 @@ enum AppRoute {
   club,
   details,
   inviteSent,
-  likes,
+  invites,
   inviteDetail,
   mates,
   mateProfile,
   mateChat,
   profile,
   editProfile,
-  settings,
   notifications,
   nearby,
   status,
   error,
 }
 
-enum AppTab { club, likes, mates, profile }
+enum AppTab { club, invites, mates, profile }
 
 class Person {
   const Person({
@@ -237,7 +236,7 @@ class AppModel extends ChangeNotifier {
   bool notifyInvites = true;
   bool notifyMates = true;
   bool notifyNearby = false;
-  bool showLikes = true;
+  bool showInvites = true;
   bool showMates = true;
   int profiles = 0;
   List<OwnPhoto> ownPhotos = [];
@@ -249,11 +248,10 @@ class AppModel extends ChangeNotifier {
   final Map<String, List<ChatLine>> _chats = {};
 
   AppTab get tab => switch (route) {
-    AppRoute.likes || AppRoute.inviteDetail => AppTab.likes,
+    AppRoute.invites || AppRoute.inviteDetail => AppTab.invites,
     AppRoute.mates || AppRoute.mateProfile || AppRoute.mateChat => AppTab.mates,
     AppRoute.profile ||
     AppRoute.editProfile ||
-    AppRoute.settings ||
     AppRoute.notifications ||
     AppRoute.nearby ||
     AppRoute.status ||
@@ -276,7 +274,7 @@ class AppModel extends ChangeNotifier {
     return source;
   }
 
-  List<Person> get incoming => live ? _incoming : (showLikes ? [aria] : []);
+  List<Person> get incoming => live ? _incoming : (showInvites ? [aria] : []);
 
   List<Person> get mateList => live ? _mateRows : (showMates ? [riya] : []);
 
@@ -317,24 +315,14 @@ class AppModel extends ChangeNotifier {
   }
 
   void goTab(AppTab next) {
-    _lensFrom = switch (tab) {
-      AppTab.club => 0,
-      AppTab.likes => 1,
-      AppTab.mates => 2,
-      AppTab.profile => 3,
-    };
     route = switch (next) {
       AppTab.club => AppRoute.club,
-      AppTab.likes => AppRoute.likes,
+      AppTab.invites => AppRoute.invites,
       AppTab.mates => AppRoute.mates,
       AppTab.profile => AppRoute.profile,
     };
     notifyListeners();
   }
-
-  int _lensFrom = 0;
-
-  int get lensFrom => _lensFrom;
 
   Future<void> start() async {
     if (!live || !_api.hasSession) {
@@ -496,7 +484,7 @@ class AppModel extends ChangeNotifier {
   Future<void> _openRoute(String? route) async {
     if (!live || !_api.hasSession || !_onboardingComplete) return;
     final target = switch (route) {
-      'likes' => AppRoute.likes,
+      'invites' || 'likes' => AppRoute.invites,
       'mates' => AppRoute.mates,
       _ => AppRoute.club,
     };
@@ -974,6 +962,18 @@ class AppModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Picks up invites and mates that arrived while the app was in the
+  /// background, so the tab badges are current.
+  Future<void> refreshOnResume() async {
+    if (!live || !_api.hasSession || !_onboardingComplete) return;
+    try {
+      await _loadPeople();
+      notifyListeners();
+    } catch (error) {
+      debugPrint('Resume refresh failed: $error');
+    }
+  }
+
   void keepExploring() {
     if (!live) profiles += 1;
     go(AppRoute.club);
@@ -1133,8 +1133,8 @@ class AppModel extends ChangeNotifier {
 
   Future<void> passInvite() async {
     if (!live) {
-      showLikes = false;
-      go(AppRoute.likes);
+      showInvites = false;
+      go(AppRoute.invites);
       return;
     }
     final inviteId = opened?.inviteId;
@@ -1142,13 +1142,13 @@ class AppModel extends ChangeNotifier {
     await _guard(() async {
       await _api.respond(inviteId, accept: false);
       await _loadPeople();
-      go(AppRoute.likes);
+      go(AppRoute.invites);
     });
   }
 
   Future<void> acceptInvite() async {
     if (!live) {
-      showLikes = false;
+      showInvites = false;
       showMates = true;
       go(AppRoute.mates);
       return;

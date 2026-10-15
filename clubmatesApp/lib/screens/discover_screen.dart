@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../state/app_model.dart';
 import '../theme/theme.dart';
+import '../ui/club_swipe.dart';
 import '../ui/liquid_glass.dart';
 import '../ui/widgets.dart';
 
@@ -15,6 +16,23 @@ class ClubScreen extends StatefulWidget {
 }
 
 class _ClubScreenState extends State<ClubScreen> {
+  final _swipe = SwipeController();
+
+  @override
+  void dispose() {
+    _swipe.dispose();
+    super.dispose();
+  }
+
+  void _decide(AppModel model, SwipeDecision decision) {
+    switch (decision) {
+      case SwipeDecision.pass:
+        model.passClub();
+      case SwipeDecision.invite:
+        model.inviteClub();
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -68,91 +86,22 @@ class _ClubScreenState extends State<ClubScreen> {
             ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: GestureDetector(
-              onTap: () => model.openPerson(person, AppRoute.details),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(28),
-                child: SizedBox(
-                  height: cardHeight,
-                  width: double.infinity,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      ProfilePhoto(person.photo),
-                      const DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Color(0x14140C11),
-                              Color(0x00000000),
-                              Color(0x42140C11),
-                            ],
-                            stops: [0, 0.4, 1],
-                          ),
-                        ),
-                      ),
-                      if (activity != null)
-                        Positioned(
-                          top: 14,
-                          left: 14,
-                          child: _OverlayActivity(activity),
-                        ),
-                      Positioned(
-                        left: 9,
-                        right: 9,
-                        bottom: 9,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: const Color(0x80181316),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: const Color(0x47FFFFFF)),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(15, 14, 12, 14),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        '${person.name}, ${person.age}',
-                                        style: ClubType.lora(
-                                          29,
-                                          height: 1.05,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 5),
-                                      PlaceLine(
-                                        person.location,
-                                        onDark: true,
-                                        verified: person.verified,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Text(
-                                  'View profile',
-                                  style: ClubType.inter(
-                                    11,
-                                    color: Colors.white.withValues(alpha: 0.9),
-                                    weight: FontWeight.w500,
-                                    height: 1,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+            child: TweenAnimationBuilder<double>(
+              key: ObjectKey(person),
+              tween: Tween(begin: 0, end: 1),
+              duration: Duration(
+                milliseconds: MediaQuery.disableAnimationsOf(context) ? 0 : 420,
+              ),
+              curve: Curves.easeOutBack,
+              builder: (context, t, child) => Opacity(
+                opacity: t.clamp(0.0, 1.0),
+                child: Transform.scale(scale: 0.92 + 0.08 * t, child: child),
+              ),
+              child: SwipeDeck(
+                controller: _swipe,
+                enabled: !model.busy,
+                onDecision: (decision) => _decide(model, decision),
+                child: _clubCard(model, person, cardHeight, activity),
               ),
             ),
           ),
@@ -168,13 +117,104 @@ class _ClubScreenState extends State<ClubScreen> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-            child: ActionBar(
-              onPass: model.passClub,
-              onInvite: model.inviteClub,
-            ),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: SwipeActions(controller: _swipe, busy: model.busy),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _clubCard(
+    AppModel model,
+    Person person,
+    double cardHeight,
+    String? activity,
+  ) {
+    return GestureDetector(
+      onTap: () => model.openPerson(person, AppRoute.details),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: SizedBox(
+          height: cardHeight,
+          width: double.infinity,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              ProfilePhoto(person.photo),
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Color(0x14140C11),
+                      Color(0x00000000),
+                      Color(0x42140C11),
+                    ],
+                    stops: [0, 0.4, 1],
+                  ),
+                ),
+              ),
+              if (activity != null)
+                Positioned(
+                  top: 14,
+                  left: 14,
+                  child: _OverlayActivity(activity),
+                ),
+              Positioned(
+                left: 9,
+                right: 9,
+                bottom: 9,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: const Color(0x80181316),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0x47FFFFFF)),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(15, 14, 12, 14),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${person.name}, ${person.age}',
+                                style: ClubType.lora(
+                                  29,
+                                  height: 1.05,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(height: 5),
+                              PlaceLine(
+                                person.location,
+                                onDark: true,
+                                verified: person.verified,
+                              ),
+                            ],
+                          ),
+                        ),
+                        Text(
+                          'View profile',
+                          style: ClubType.inter(
+                            11,
+                            color: Colors.white.withValues(alpha: 0.9),
+                            weight: FontWeight.w500,
+                            height: 1,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
