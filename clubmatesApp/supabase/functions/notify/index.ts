@@ -106,8 +106,8 @@ Deno.serve(async (request) => {
   }
 
   let title = "New invite";
-  let body = "Someone wants to go out tonight. Open Likes to see who.";
-  let route = "likes";
+  let body = "Someone sent you an invite to go out tonight. Open Invites to see who.";
+  let route = "invites";
   if (kind === "accepted") {
     const { data: accepter } = await db
       .from("profiles")
@@ -116,7 +116,7 @@ Deno.serve(async (request) => {
       .maybeSingle();
     const first = (accepter?.display_name ?? "").trim().split(/\s+/)[0] || "Someone";
     title = "You have a new mate";
-    body = `${first} accepted. You are mates now.`;
+    body = `${first} accepted your invite. You are mates now.`;
     route = "mates";
   }
 

@@ -12,7 +12,7 @@
 2. Do not assume Flutter or React. Continue with the framework already present. Ask only if the repository genuinely does not identify a stack.
 3. Before edits, summarize the implementation approach and list any conflicts between the repository and this plan.
 4. Make small, reviewable changes. Do not rewrite the whole application in one pass.
-5. Keep visual design aligned with Clubmates: premium, minimal, nightlife/social discovery, not a dating-app clone. Main tabs are **Club, Likes, Mates, Profile**.
+5. Keep visual design aligned with Clubmates: premium, minimal, nightlife/social discovery, not a dating-app clone. Main tabs are **Club, Invites, Mates, Profile**.
 6. Never put `service_role` keys, provider secrets or privileged tokens in client code.
 7. Do not implement payments, Aadhaar/PAN KYC, face verification, chat, push notifications, Kafka, Redis or a standalone Go server in Phase 1 unless the repository already contains a required implementation and the owner approves retaining it.
 8. Use SQL migrations in source control. Do not silently run destructive migrations against a shared/production project.
@@ -47,7 +47,7 @@ A concise repository assessment and a file-by-file implementation plan that pres
 - Client repository layer.
 - Profile onboarding and profile editing.
 - Profile photo upload.
-- Club discovery, Pass, Invite, Likes, Mates and basic blocking.
+- Club discovery, Pass, Invite, Invites tab, Mates and basic blocking.
 - Minimal error/loading/empty states.
 
 ### 2.1 Database migration
@@ -157,7 +157,7 @@ Preserve the existing visual system and component conventions. Do not generate a
 - [ ] Exclude self, passed profiles, blocked pairs, existing Mate connections and invite states according to product rules.
 - [ ] Paginate or limit results; do not fetch every profile.
 
-### Likes
+### Invites
 - [ ] List incoming pending invites.
 - [ ] Allow accept/decline only for the receiver.
 - [ ] Refresh the list after a successful response.
@@ -233,7 +233,7 @@ Use two separate authenticated test accounts, User A and User B.
 5. Profile read/update.
 6. Photo Storage upload and metadata.
 7. Discovery query and Pass.
-8. Invite RPCs and Likes.
+8. Invite RPCs and the Invites tab.
 9. Mate list.
 10. Blocking and settings.
 11. Security tests and cleanup.

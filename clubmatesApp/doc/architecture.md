@@ -4,7 +4,7 @@ Nightlife social product. Not a dating app. Two apps, one database.
 
 | Folder | What it is |
 |---|---|
-| `clubmatesApp` | Flutter phone app. Tabs: Club, Likes, Mates, Profile. |
+| `clubmatesApp` | Flutter phone app. Tabs: Club, Invites, Mates, Profile. |
 | `clubmatesWeb` | Next.js marketing site. Early access only. Login and account routes redirect home. |
 | `clubmatesApp/supabase/migrations` | The database. Do not re-run the Phase 1 file. Later files are additive. |
 
