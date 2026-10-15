@@ -81,7 +81,9 @@ class ClubmatesRepository {
     final uid = _uid;
     final profile = await _db
         .from('profiles')
-        .select('display_name, bio, city, gender, height_cm, is_verified')
+        .select(
+          'display_name, bio, city, gender, height_cm, is_verified, out_tonight_until',
+        )
         .eq('id', uid)
         .maybeSingle();
     final private = await _db
@@ -106,6 +108,7 @@ class ClubmatesRepository {
       discoverable: private == null || private['discoverable'] != false,
       onboardingCompleted: private?['onboarding_completed'] == true,
       interestedIn: private?['interested_in'] as String?,
+      outTonightUntil: parseTimestamp(profile['out_tonight_until']),
     );
   }
 
@@ -140,11 +143,21 @@ class ClubmatesRepository {
     required double latitude,
     required double longitude,
   }) {
-    return _db.from('profiles').update({
-      'latitude': latitude,
-      'longitude': longitude,
-      'location_updated_at': DateTime.now().toUtc().toIso8601String(),
-    }).eq('id', _uid);
+    return _db
+        .from('profiles')
+        .update({
+          'latitude': latitude,
+          'longitude': longitude,
+          'location_updated_at': DateTime.now().toUtc().toIso8601String(),
+        })
+        .eq('id', _uid);
+  }
+
+  Future<void> setOutTonight(DateTime? until) {
+    return _db
+        .from('profiles')
+        .update({'out_tonight_until': until?.toUtc().toIso8601String()})
+        .eq('id', _uid);
   }
 
   Future<void> createPrivate(DateTime dob, {String? interestedIn}) {
@@ -269,14 +282,13 @@ class ClubmatesRepository {
   }
 
   Future<void> pass(String targetId) {
-    return _db.from('passes').upsert(
-      {
-        'user_id': _uid,
-        'target_user_id': targetId,
-      },
-      onConflict: 'user_id,target_user_id',
-      ignoreDuplicates: true,
-    );
+    return _db
+        .from('passes')
+        .upsert(
+          {'user_id': _uid, 'target_user_id': targetId},
+          onConflict: 'user_id,target_user_id',
+          ignoreDuplicates: true,
+        );
   }
 
   Future<void> invite(String targetId) {
@@ -388,6 +400,7 @@ class ClubmatesRepository {
           bio: row['bio'] as String? ?? '',
           verified: row['is_verified'] == true,
           photoUrl: photos[row['id']] ?? '',
+          outTonightUntil: parseTimestamp(row['out_tonight_until']),
         ),
     ];
   }
@@ -437,6 +450,7 @@ class ClubmatesRepository {
       photoUrl: person.photoUrl,
       inviteId: inviteId ?? person.inviteId,
       mateId: mateId ?? person.mateId,
+      outTonightUntil: person.outTonightUntil,
     );
   }
 

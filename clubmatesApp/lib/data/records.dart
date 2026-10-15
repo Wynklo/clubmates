@@ -10,6 +10,7 @@ class PublicPerson {
     required this.photoUrl,
     this.inviteId,
     this.mateId,
+    this.outTonightUntil,
   });
 
   final String id;
@@ -21,6 +22,12 @@ class PublicPerson {
   final String photoUrl;
   final String? inviteId;
   final String? mateId;
+  final DateTime? outTonightUntil;
+}
+
+DateTime? parseTimestamp(Object? value) {
+  if (value is! String || value.isEmpty) return null;
+  return DateTime.tryParse(value)?.toLocal();
 }
 
 class OwnPhoto {
@@ -56,6 +63,7 @@ class OwnAccount {
     required this.discoverable,
     required this.onboardingCompleted,
     required this.interestedIn,
+    this.outTonightUntil,
   });
 
   final bool hasProfile;
@@ -69,6 +77,7 @@ class OwnAccount {
   final bool discoverable;
   final bool onboardingCompleted;
   final String? interestedIn;
+  final DateTime? outTonightUntil;
 
   static const empty = OwnAccount(
     hasProfile: false,

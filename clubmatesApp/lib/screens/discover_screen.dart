@@ -49,7 +49,7 @@ class _ClubScreenState extends State<ClubScreen> {
     }
     final height = MediaQuery.sizeOf(context).height;
     final cardHeight = height * 0.58 > 545 ? 545.0 : height * 0.58;
-    final activity = recentActivity(person.minutesAgo);
+    final activity = tonightStatus(person.outTonightUntil);
     return MainShell(
       child: ListView(
         padding: EdgeInsets.only(bottom: ClubChrome.clearance(context)),

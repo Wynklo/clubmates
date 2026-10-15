@@ -68,7 +68,7 @@ class Person {
     this.verified = true,
     this.inviteId,
     this.mateId,
-    this.minutesAgo,
+    this.outTonightUntil,
     this.distanceKm,
   });
 
@@ -84,16 +84,23 @@ class Person {
   final bool verified;
   final String? inviteId;
   final String? mateId;
-  final int? minutesAgo;
+  final DateTime? outTonightUntil;
   final double? distanceKm;
-
-  bool get recentlyActive => minutesAgo != null && minutesAgo! <= 20;
 }
 
-String? recentActivity(int? minutesAgo) {
-  if (minutesAgo == null || minutesAgo > 20) return null;
-  if (minutesAgo <= 1) return 'Active now';
-  return 'Active ${minutesAgo}m ago';
+bool isOutTonight(DateTime? until) =>
+    until != null && until.isAfter(DateTime.now());
+
+String? tonightStatus(DateTime? until) =>
+    isOutTonight(until) ? 'Out tonight' : null;
+
+/// The next 4 AM local time, when a night out is treated as over.
+DateTime endOfNight([DateTime? from]) {
+  final now = from ?? DateTime.now();
+  final today = DateTime(now.year, now.month, now.day, 4);
+  return now.isBefore(today)
+      ? today
+      : DateTime(now.year, now.month, now.day + 1, 4);
 }
 
 class ChatLine {
@@ -112,7 +119,6 @@ const meera = Person(
   interests: ['Drinks', 'Food', 'Live Music'],
   photo: 'assets/photos/meera.jpg',
   preview: 'Dinner, then a bar in Indiranagar.',
-  minutesAgo: 4,
   distanceKm: 3,
 );
 
@@ -125,7 +131,6 @@ const kabir = Person(
   interests: ['Drinks', 'Food', 'Live Music'],
   photo: 'assets/photos/kabir.jpg',
   preview: 'Live music and a late dinner.',
-  minutesAgo: 12,
   distanceKm: 8,
 );
 
@@ -138,7 +143,6 @@ const aria = Person(
   interests: ['Drinks', 'Dinner', 'Live Music'],
   photo: 'assets/photos/aria.jpg',
   preview: 'Drinks, dinner, live music',
-  minutesAgo: 40,
   distanceKm: 18,
 );
 
@@ -151,7 +155,6 @@ const riya = Person(
   interests: ['Drinks', 'Food', 'Live Music'],
   photo: 'assets/photos/riya.jpg',
   preview: 'Tonight: rooftop drinks',
-  minutesAgo: 6,
   distanceKm: 4,
 );
 
@@ -218,6 +221,7 @@ class AppModel extends ChangeNotifier {
   String idType = 'Aadhaar';
   bool uploaded = false;
   bool discoverable = true;
+  DateTime? outTonightUntil;
   bool locationOn = false;
   bool nearbyOnly = true;
   AppRoute nearbyBack = AppRoute.profile;
@@ -969,6 +973,26 @@ class AppModel extends ChangeNotifier {
     await _guard(() => _api.updatePrivate(discoverable: value));
   }
 
+  bool get outTonight => isOutTonight(outTonightUntil);
+
+  /// Without [forDuration], the status lasts until [endOfNight].
+  Future<void> setOutTonight({required bool on, Duration? forDuration}) async {
+    final previous = outTonightUntil;
+    final until = !on
+        ? null
+        : forDuration == null
+        ? endOfNight()
+        : DateTime.now().add(forDuration);
+    outTonightUntil = until;
+    notifyListeners();
+    if (!live) return;
+    final saved = await _guard(() => _api.setOutTonight(until));
+    if (!saved) {
+      outTonightUntil = previous;
+      notifyListeners();
+    }
+  }
+
   Future<void> saveEdits({
     required String nextName,
     required String nextBio,
@@ -1130,6 +1154,7 @@ class AppModel extends ChangeNotifier {
     _verified = account.verified;
     _dob = account.dateOfBirth;
     discoverable = account.discoverable;
+    outTonightUntil = account.outTonightUntil;
     if (account.interestedIn != null) {
       lookingFor = interestLabels[account.interestedIn] ?? lookingFor;
     }
@@ -1147,7 +1172,7 @@ class AppModel extends ChangeNotifier {
 
   Person _card(PublicPerson person) {
     final preview = person.bio.trim().isEmpty
-        ? 'Out tonight.'
+        ? 'No plans shared yet.'
         : person.bio.trim();
     return Person(
       id: person.id,
@@ -1162,6 +1187,7 @@ class AppModel extends ChangeNotifier {
       verified: person.verified,
       inviteId: person.inviteId,
       mateId: person.mateId,
+      outTonightUntil: person.outTonightUntil,
     );
   }
 
@@ -1194,6 +1220,7 @@ class AppModel extends ChangeNotifier {
     _chats.clear();
     _locationSavedAt = null;
     locationOn = false;
+    outTonightUntil = null;
     errorMessage = null;
   }
 

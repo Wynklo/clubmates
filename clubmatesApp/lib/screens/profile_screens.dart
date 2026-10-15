@@ -751,6 +751,23 @@ class SettingsScreen extends StatelessWidget {
             activeThumbColor: ClubColors.brand,
             onChanged: model.busy ? null : model.setDiscoverable,
           ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text('Out tonight', style: ClubType.inter(14)),
+            subtitle: Text(
+              model.outTonight
+                  ? 'Until ${TimeOfDay.fromDateTime(model.outTonightUntil!).format(context)}. It turns off on its own.'
+                  : 'Let people in Club know you are going out.',
+              style: ClubType.inter(12, color: ClubColors.muted),
+            ),
+            value: model.outTonight,
+            activeThumbColor: ClubColors.brand,
+            onChanged: model.busy
+                ? null
+                : (on) => on
+                      ? _chooseOutTonight(context)
+                      : model.setOutTonight(on: false),
+          ),
           const SettingsRow('Account'),
           SettingsRow(
             'Notifications',
@@ -925,6 +942,43 @@ class _InnerPage extends StatelessWidget {
       ),
     );
   }
+}
+
+Future<void> _chooseOutTonight(BuildContext context) async {
+  final model = AppScope.read(context);
+  final endTime = TimeOfDay.fromDateTime(endOfNight()).format(context);
+  final choices = <(String, Duration?)>[
+    ('End of night ($endTime)', null),
+    ('2 hours', const Duration(hours: 2)),
+    ('4 hours', const Duration(hours: 4)),
+  ];
+  final picked = await showModalBottomSheet<(String, Duration?)>(
+    context: context,
+    backgroundColor: ClubColors.paper,
+    builder: (context) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+            child: Text(
+              'Out tonight for how long?',
+              style: ClubType.inter(16, weight: FontWeight.w600),
+            ),
+          ),
+          for (final choice in choices)
+            ListTile(
+              title: Text(choice.$1, style: ClubType.inter(14)),
+              onTap: () => Navigator.pop(context, choice),
+            ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    ),
+  );
+  if (picked == null) return;
+  await model.setOutTonight(on: true, forDuration: picked.$2);
 }
 
 Future<void> _confirmDeleteAccount(BuildContext context) async {

@@ -214,13 +214,13 @@ class PersonDetailScreen extends StatelessWidget {
                         children: [
                           const _MatchedLabel(),
                           const Spacer(),
-                          if (recentActivity(person.minutesAgo) != null)
-                            _ActivityLine(recentActivity(person.minutesAgo)!),
+                          if (tonightStatus(person.outTonightUntil) != null)
+                            _ActivityLine(tonightStatus(person.outTonightUntil)!),
                         ],
                       ),
-                    ] else if (recentActivity(person.minutesAgo) != null) ...[
+                    ] else if (tonightStatus(person.outTonightUntil) != null) ...[
                       const SizedBox(height: 14),
-                      _ActivityLine(recentActivity(person.minutesAgo)!),
+                      _ActivityLine(tonightStatus(person.outTonightUntil)!),
                     ],
                     const SizedBox(height: 26),
                     _CopyBlock('Tonight', person.tonight),
@@ -371,7 +371,7 @@ class _PersonRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activity = recentActivity(person.minutesAgo);
+    final activity = tonightStatus(person.outTonightUntil);
     final line = subtitle ?? person.preview;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
@@ -714,7 +714,7 @@ class _MateChatScreenState extends State<MateChatScreen> {
     final model = AppScope.watch(context);
     final person = model.opened ?? riya;
     final lines = model.chatForOpened();
-    final activity = recentActivity(person.minutesAgo);
+    final activity = tonightStatus(person.outTonightUntil);
     final headerHeight = _chatHeaderHeight(context);
     return Scaffold(
       resizeToAvoidBottomInset: true,
