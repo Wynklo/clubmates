@@ -22,14 +22,27 @@
 	<string>$(FLUTTER_BUILD_NAME)</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>firebase-phone-auth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>app-1-568307757910-ios-1e7d25f6b96f5ab1a5dcf7</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Clubmates uses your location to show people in the same area. Searches beyond 10 km are paid.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Clubmates uses the camera so you can add a profile photo.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Clubmates uses your location to show people in the same area. Searches beyond 10 km are paid.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Clubmates uses your photos so you can add a profile photo.</string>
 	<key>UIApplicationSceneManifest</key>

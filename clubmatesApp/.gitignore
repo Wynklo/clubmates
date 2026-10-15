@@ -47,3 +47,9 @@ app.*.map.json
 # Local Supabase connection for flutter run. Never commit the real key.
 dart_defines.json
 supabase/.temp/
+
+# Firebase app config and server credentials stay out of git.
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+*firebase-adminsdk*.json
+*-sa.json
