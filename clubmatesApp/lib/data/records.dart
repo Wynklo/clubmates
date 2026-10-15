@@ -64,6 +64,9 @@ class OwnAccount {
     required this.onboardingCompleted,
     required this.interestedIn,
     this.outTonightUntil,
+    this.notifyInvites = true,
+    this.notifyMates = true,
+    this.notifyNearby = false,
   });
 
   final bool hasProfile;
@@ -78,6 +81,9 @@ class OwnAccount {
   final bool onboardingCompleted;
   final String? interestedIn;
   final DateTime? outTonightUntil;
+  final bool notifyInvites;
+  final bool notifyMates;
+  final bool notifyNearby;
 
   static const empty = OwnAccount(
     hasProfile: false,

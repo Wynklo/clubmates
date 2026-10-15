@@ -601,7 +601,7 @@ class NotificationsScreen extends StatelessWidget {
     return _InnerPage(
       title: 'Push notifications',
       supporting:
-          'Choose the updates that are worth interrupting your night. These choices stay on this phone.',
+          'Choose the updates that are worth interrupting your night. These choices are saved to your account.',
       onBack: () => model.go(AppRoute.profile),
       child: Column(
         children: [
@@ -612,12 +612,14 @@ class NotificationsScreen extends StatelessWidget {
               style: ClubType.inter(13, weight: FontWeight.w600),
             ),
             subtitle: Text(
-              'When someone wants to go out with you.',
+              'When someone invites you, and when your invite is accepted.',
               style: ClubType.inter(12, color: ClubColors.muted),
             ),
             value: model.notifyInvites,
             activeThumbColor: ClubColors.brand,
-            onChanged: (value) => model.setNotify(invites: value),
+            onChanged: model.busy
+                ? null
+                : (value) => model.setNotify(invites: value),
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
@@ -626,12 +628,14 @@ class NotificationsScreen extends StatelessWidget {
               style: ClubType.inter(13, weight: FontWeight.w600),
             ),
             subtitle: Text(
-              'Messages and shared plans from your mates.',
+              'Coming with chat. Saved for when mate chat arrives.',
               style: ClubType.inter(12, color: ClubColors.muted),
             ),
             value: model.notifyMates,
             activeThumbColor: ClubColors.brand,
-            onChanged: (value) => model.setNotify(mates: value),
+            onChanged: model.busy
+                ? null
+                : (value) => model.setNotify(mates: value),
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
@@ -640,12 +644,14 @@ class NotificationsScreen extends StatelessWidget {
               style: ClubType.inter(13, weight: FontWeight.w600),
             ),
             subtitle: Text(
-              'People active within your distance tonight.',
+              'Coming soon. Your choice is saved for later.',
               style: ClubType.inter(12, color: ClubColors.muted),
             ),
             value: model.notifyNearby,
             activeThumbColor: ClubColors.brand,
-            onChanged: (value) => model.setNotify(nearby: value),
+            onChanged: model.busy
+                ? null
+                : (value) => model.setNotify(nearby: value),
           ),
         ],
       ),

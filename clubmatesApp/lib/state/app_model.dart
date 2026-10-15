@@ -1,3 +1,11 @@
+import 'dart:async';
+import 'dart:io' show Platform;
+
+import 'package:firebase_auth/firebase_auth.dart'
+    show FirebaseAuthException, PhoneAuthCredential;
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:geolocator/geolocator.dart';
@@ -5,6 +13,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../data/clubmates_repository.dart';
+import '../data/firebase_setup.dart';
 import '../data/records.dart';
 export '../data/records.dart'
     show
@@ -334,6 +343,165 @@ class AppModel extends ChangeNotifier {
     }
     final ok = await _guard(_resume);
     if (!ok && route == AppRoute.splash) go(AppRoute.error);
+    if (!ok) return;
+    await _registerPush();
+    if (_pushSupported) {
+      final opened = await FirebaseMessaging.instance.getInitialMessage();
+      if (opened != null) {
+        await _openFromPush(opened);
+        return;
+      }
+      if (!_trayReady) return;
+      final launch = await _tray.getNotificationAppLaunchDetails();
+      if (launch?.didNotificationLaunchApp ?? false) {
+        await _openRoute(launch!.notificationResponse?.payload);
+      }
+    }
+  }
+
+  String? _verificationId;
+  int? _resendToken;
+  String? _pushToken;
+  StreamSubscription<String>? _tokenRefresh;
+  bool _pushListening = false;
+  final _tray = FlutterLocalNotificationsPlugin();
+  bool _trayReady = false;
+  int _trayId = 0;
+
+  // Must match default_notification_channel_id in AndroidManifest.xml so
+  // pushes shown by Android while the app is closed use the same channel.
+  static const _alerts = AndroidNotificationChannel(
+    'clubmates_alerts',
+    'Invites and mates',
+    description: 'New invites and accepted invites.',
+    importance: Importance.high,
+  );
+
+  @override
+  void dispose() {
+    _tokenRefresh?.cancel();
+    super.dispose();
+  }
+
+  bool get _pushSupported => FirebaseSetup.ready && Platform.isAndroid;
+
+  // The notify Edge Function sends through FCM HTTP v1 to registration
+  // tokens, so the token calls are kept until it moves to installation IDs.
+
+  Future<void> _registerPush() async {
+    if (!live || !_pushSupported || !_api.hasSession) return;
+    final messaging = FirebaseMessaging.instance;
+    try {
+      final permission = await messaging.requestPermission();
+      if (permission.authorizationStatus == AuthorizationStatus.denied) return;
+      await _setupTray();
+      // ignore: deprecated_member_use
+      final token = await messaging.getToken();
+      if (token == null) return;
+      _pushToken = token;
+      await _api.saveDeviceToken(token, 'android');
+      // ignore: deprecated_member_use
+      _tokenRefresh ??= messaging.onTokenRefresh.listen((next) async {
+        if (!_api.hasSession) return;
+        _pushToken = next;
+        try {
+          await _api.saveDeviceToken(next, 'android');
+        } catch (error) {
+          debugPrint('Push token refresh failed: $error');
+        }
+      });
+      if (!_pushListening) {
+        _pushListening = true;
+        FirebaseMessaging.onMessageOpenedApp.listen(_openFromPush);
+        FirebaseMessaging.onMessage.listen((message) {
+          refreshPeople();
+          _showInTray(message);
+        });
+      }
+    } catch (error) {
+      debugPrint('Push setup failed: $error');
+    }
+  }
+
+  /// Stops pushes to this phone before the session ends.
+  Future<void> _unregisterPush() async {
+    if (!_pushSupported) return;
+    final messaging = FirebaseMessaging.instance;
+    await _tokenRefresh?.cancel();
+    _tokenRefresh = null;
+    try {
+      // ignore: deprecated_member_use
+      final token = _pushToken ?? await messaging.getToken();
+      if (token != null && _api.hasSession) {
+        await _api.removeDeviceToken(token);
+      }
+    } catch (error) {
+      debugPrint('Push token removal failed: $error');
+    }
+    try {
+      // ignore: deprecated_member_use
+      await messaging.deleteToken();
+    } catch (error) {
+      debugPrint('Push token delete failed: $error');
+    }
+    _pushToken = null;
+  }
+
+  Future<void> _setupTray() async {
+    if (_trayReady) return;
+    await _tray.initialize(
+      settings: const InitializationSettings(
+        android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+      ),
+      onDidReceiveNotificationResponse: (response) =>
+          _openRoute(response.payload),
+    );
+    await _tray
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
+        ?.createNotificationChannel(_alerts);
+    _trayReady = true;
+  }
+
+  /// Android leaves pushes out of the notification bar while the app is
+  /// open, so they are posted here instead.
+  Future<void> _showInTray(RemoteMessage message) async {
+    final notification = message.notification;
+    if (!_trayReady || notification == null) return;
+    try {
+      await _tray.show(
+        id: _trayId++,
+        title: notification.title,
+        body: notification.body,
+        payload: message.data['route'],
+        notificationDetails: NotificationDetails(
+          android: AndroidNotificationDetails(
+            _alerts.id,
+            _alerts.name,
+            channelDescription: _alerts.description,
+            importance: Importance.high,
+            priority: Priority.high,
+          ),
+        ),
+      );
+    } catch (error) {
+      debugPrint('Push display failed: $error');
+    }
+  }
+
+  Future<void> _openFromPush(RemoteMessage message) =>
+      _openRoute(message.data['route']);
+
+  Future<void> _openRoute(String? route) async {
+    if (!live || !_api.hasSession || !_onboardingComplete) return;
+    final target = switch (route) {
+      'likes' => AppRoute.likes,
+      'mates' => AppRoute.mates,
+      _ => AppRoute.club,
+    };
+    await refreshPeople();
+    go(target);
   }
 
   Future<void> retry() async {
@@ -359,7 +527,9 @@ class AppModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  bool get testLogin => live && _devPassword.isNotEmpty;
+  /// The fixed-code developer login. kDebugMode is false in release builds,
+  /// so a build people can install always uses real SMS codes.
+  bool get testLogin => live && kDebugMode && _devPassword.isNotEmpty;
 
   Future<void> sendCode({bool resend = false}) async {
     final issue = phoneIssue(phone);
@@ -380,10 +550,38 @@ class AppModel extends ChangeNotifier {
       notifyListeners();
       return;
     }
+    if (!FirebaseSetup.ready) {
+      errorMessage = 'Phone sign-in is not available yet.';
+      notifyListeners();
+      return;
+    }
     await _guard(() async {
-      await _api.sendOtp('+91$phone');
+      final sent = await _api.requestPhoneCode(
+        '+91$phone',
+        resendToken: resend ? _resendToken : null,
+        onAutoVerified: _signInAutomatically,
+      );
+      final instant = sent.instant;
+      if (instant != null) {
+        await _api.signInWithPhoneCredential(instant);
+        await _resume();
+        await _registerPush();
+        return;
+      }
+      _verificationId = sent.verificationId;
+      _resendToken = sent.resendToken ?? _resendToken;
+      otp = List.filled(6, '');
+      otpError = false;
       if (!resend) go(AppRoute.otp);
     });
+  }
+
+  Future<void> _signInAutomatically(PhoneAuthCredential credential) async {
+    final ok = await _guard(() async {
+      await _api.signInWithPhoneCredential(credential);
+      await _resume();
+    });
+    if (ok) await _registerPush();
   }
 
   Future<void> verifyOtp() async {
@@ -398,7 +596,9 @@ class AppModel extends ChangeNotifier {
         await _api.signInTestPhone(phone);
         await _resume();
       });
-      if (!ok) {
+      if (ok) {
+        await _registerPush();
+      } else {
         otpError = true;
         notifyListeners();
       }
@@ -413,14 +613,26 @@ class AppModel extends ChangeNotifier {
       go(AppRoute.interest);
       return;
     }
+    final verificationId = _verificationId;
+    if (verificationId == null) {
+      errorMessage = 'Request a new code and try again.';
+      notifyListeners();
+      return;
+    }
     final ok = await _guard(() async {
-      await _api.verifyOtp('+91$phone', otp.join());
+      await _api.verifyPhoneCode(verificationId, otp.join());
       await _resume();
     });
-    if (!ok) {
-      otpError = true;
-      notifyListeners();
+    if (ok) {
+      _verificationId = null;
+      await _registerPush();
+      return;
     }
+    if (errorMessage == wrongCodeMessage) {
+      errorMessage = null;
+      otpError = true;
+    }
+    notifyListeners();
   }
 
   void setName(String value) {
@@ -800,11 +1012,30 @@ class AppModel extends ChangeNotifier {
     sendChat('Shared a plan: Find drinks nearby');
   }
 
-  void setNotify({bool? invites, bool? mates, bool? nearby}) {
+  Future<void> setNotify({bool? invites, bool? mates, bool? nearby}) async {
+    final (oldInvites, oldMates, oldNearby) = (
+      notifyInvites,
+      notifyMates,
+      notifyNearby,
+    );
     if (invites != null) notifyInvites = invites;
     if (mates != null) notifyMates = mates;
     if (nearby != null) notifyNearby = nearby;
     notifyListeners();
+    if (!live || !_hasPrivate) return;
+    final saved = await _guard(
+      () => _api.updatePrivate(
+        notifyInvites: invites,
+        notifyMates: mates,
+        notifyNearby: nearby,
+      ),
+    );
+    if (!saved) {
+      notifyInvites = oldInvites;
+      notifyMates = oldMates;
+      notifyNearby = oldNearby;
+      notifyListeners();
+    }
   }
 
   void chooseNearby() {
@@ -1044,6 +1275,7 @@ class AppModel extends ChangeNotifier {
 
   Future<void> signOut() async {
     if (live) {
+      await _unregisterPush();
       await _guard(_api.signOut);
     }
     _resetLocal();
@@ -1056,6 +1288,7 @@ class AppModel extends ChangeNotifier {
       go(AppRoute.phone);
       return;
     }
+    await _unregisterPush();
     final removed = await _guard(() async {
       await _api.deleteAccount();
       try {
@@ -1155,6 +1388,9 @@ class AppModel extends ChangeNotifier {
     _dob = account.dateOfBirth;
     discoverable = account.discoverable;
     outTonightUntil = account.outTonightUntil;
+    notifyInvites = account.notifyInvites;
+    notifyMates = account.notifyMates;
+    notifyNearby = account.notifyNearby;
     if (account.interestedIn != null) {
       lookingFor = interestLabels[account.interestedIn] ?? lookingFor;
     }
@@ -1221,10 +1457,34 @@ class AppModel extends ChangeNotifier {
     _locationSavedAt = null;
     locationOn = false;
     outTonightUntil = null;
+    notifyInvites = true;
+    notifyMates = true;
+    notifyNearby = false;
+    _verificationId = null;
+    _resendToken = null;
     errorMessage = null;
   }
 
   String _message(Object error) {
+    if (error is FirebaseAuthException) {
+      return switch (error.code) {
+        'invalid-verification-code' ||
+        'invalid-verification-id' ||
+        'session-expired' ||
+        'code-expired' => wrongCodeMessage,
+        'invalid-phone-number' => 'Enter a valid 10-digit mobile number.',
+        'too-many-requests' ||
+        'quota-exceeded' => 'Too many tries. Wait a while and try again.',
+        'network-request-failed' => 'No connection. Check your internet.',
+        'operation-not-allowed' => 'Phone sign-in is not available yet.',
+        _ => 'Could not send the code. Try again.',
+      };
+    }
+    if (error is FunctionException) {
+      final details = error.details;
+      final text = details is Map ? details['error'] : null;
+      return text is String ? text : 'Sign-in failed. Try again.';
+    }
     if (error is AuthException) return error.message;
     if (error is PostgrestException) return error.message;
     if (error is StorageException) return error.message;

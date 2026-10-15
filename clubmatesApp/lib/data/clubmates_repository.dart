@@ -1,7 +1,22 @@
+import 'dart:async';
+
+import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'records.dart';
+
+const wrongCodeMessage = 'That code did not work. Try again.';
+
+class PhoneCodeRequest {
+  const PhoneCodeRequest({this.verificationId, this.resendToken, this.instant});
+
+  final String? verificationId;
+  final int? resendToken;
+
+  /// Android can verify the number without a typed code.
+  final fb.PhoneAuthCredential? instant;
+}
 
 class ClubmatesRepository {
   SupabaseClient get _db => Supabase.instance.client;
@@ -14,18 +29,85 @@ class ClubmatesRepository {
     return id;
   }
 
-  Future<void> sendOtp(String e164) {
-    return _db.auth.signInWithOtp(phone: e164);
+  /// Asks Firebase to text a code. [onAutoVerified] runs if Android reads
+  /// the SMS itself after the code was sent.
+  Future<PhoneCodeRequest> requestPhoneCode(
+    String e164, {
+    int? resendToken,
+    required void Function(fb.PhoneAuthCredential) onAutoVerified,
+  }) {
+    final result = Completer<PhoneCodeRequest>();
+    fb.FirebaseAuth.instance.verifyPhoneNumber(
+      phoneNumber: e164,
+      forceResendingToken: resendToken,
+      timeout: const Duration(seconds: 60),
+      verificationCompleted: (credential) {
+        if (result.isCompleted) {
+          onAutoVerified(credential);
+        } else {
+          result.complete(PhoneCodeRequest(instant: credential));
+        }
+      },
+      verificationFailed: (error) {
+        if (!result.isCompleted) result.completeError(error);
+      },
+      codeSent: (verificationId, token) {
+        if (!result.isCompleted) {
+          result.complete(
+            PhoneCodeRequest(
+              verificationId: verificationId,
+              resendToken: token,
+            ),
+          );
+        }
+      },
+      codeAutoRetrievalTimeout: (_) {},
+    );
+    return result.future;
   }
 
-  Future<void> verifyOtp(String e164, String token) {
-    return _db.auth.verifyOTP(phone: e164, token: token, type: OtpType.sms);
+  Future<void> verifyPhoneCode(String verificationId, String code) {
+    return signInWithPhoneCredential(
+      fb.PhoneAuthProvider.credential(
+        verificationId: verificationId,
+        smsCode: code,
+      ),
+    );
   }
 
-  /// Test sign-in for any Indian mobile until SMS is enabled.
-  /// The code is always 111111. At most five new numbers can register.
+  /// Signs in to Firebase, then swaps the Firebase ID token for a Supabase
+  /// session through the firebase-session Edge Function. Only the Supabase
+  /// session is kept.
+  Future<void> signInWithPhoneCredential(
+    fb.PhoneAuthCredential credential,
+  ) async {
+    final auth = fb.FirebaseAuth.instance;
+    try {
+      final signedIn = await auth.signInWithCredential(credential);
+      final idToken = await signedIn.user?.getIdToken(true);
+      if (idToken == null) throw const AuthException(wrongCodeMessage);
+      final response = await _db.functions.invoke(
+        'firebase-session',
+        body: {'id_token': idToken},
+      );
+      final data = response.data;
+      final refresh = data is Map ? data['refresh_token'] : null;
+      if (refresh is! String || refresh.isEmpty) {
+        throw const AuthException('Sign-in failed. Try again.');
+      }
+      await _db.auth.setSession(refresh);
+    } finally {
+      await auth.signOut();
+    }
+  }
+
+  /// Developer sign-in for debug builds only. Release builds never reach the
+  /// password, so the fixed 111111 code cannot work there.
   /// Pass the shared test password with --dart-define=DEV_LOGIN_PASSWORD=...
   Future<void> signInTestPhone(String phone) async {
+    if (!kDebugMode) {
+      throw const AuthException('Phone sign-in is not available yet.');
+    }
     const password = String.fromEnvironment('DEV_LOGIN_PASSWORD');
     if (password.isEmpty) {
       throw const AuthException('Phone sign-in is not available yet.');
@@ -49,6 +131,17 @@ class ClubmatesRepository {
   }
 
   Future<void> signOut() => _db.auth.signOut();
+
+  Future<void> saveDeviceToken(String token, String platform) {
+    return _db.rpc(
+      'register_device_token',
+      params: {'p_token': token, 'p_platform': platform},
+    );
+  }
+
+  Future<void> removeDeviceToken(String token) {
+    return _db.rpc('remove_device_token', params: {'p_token': token});
+  }
 
   /// Removes the signed-in account. Photo files go through the Storage API
   /// first. The database function then deletes the auth user, and the profile
@@ -89,7 +182,8 @@ class ClubmatesRepository {
     final private = await _db
         .from('user_private')
         .select(
-          'date_of_birth, discoverable, onboarding_completed, interested_in',
+          'date_of_birth, discoverable, onboarding_completed, interested_in, '
+          'notify_invites, notify_mates, notify_nearby',
         )
         .eq('user_id', uid)
         .maybeSingle();
@@ -109,6 +203,9 @@ class ClubmatesRepository {
       onboardingCompleted: private?['onboarding_completed'] == true,
       interestedIn: private?['interested_in'] as String?,
       outTonightUntil: parseTimestamp(profile['out_tonight_until']),
+      notifyInvites: private?['notify_invites'] != false,
+      notifyMates: private?['notify_mates'] != false,
+      notifyNearby: private?['notify_nearby'] == true,
     );
   }
 
@@ -174,6 +271,9 @@ class ClubmatesRepository {
     bool? discoverable,
     bool? onboardingCompleted,
     String? interestedIn,
+    bool? notifyInvites,
+    bool? notifyMates,
+    bool? notifyNearby,
   }) {
     final iso = dob == null ? null : _isoDate(dob);
     return _db
@@ -183,6 +283,9 @@ class ClubmatesRepository {
           'discoverable': ?discoverable,
           'onboarding_completed': ?onboardingCompleted,
           'interested_in': ?interestedIn,
+          'notify_invites': ?notifyInvites,
+          'notify_mates': ?notifyMates,
+          'notify_nearby': ?notifyNearby,
         })
         .eq('user_id', _uid);
   }
