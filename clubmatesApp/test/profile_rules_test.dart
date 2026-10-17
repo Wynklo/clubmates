@@ -50,7 +50,8 @@ void main() {
     expect(cityIssue(''), isNull);
     expect(cityIssue('', required: true), 'Enter a city.');
     expect(heightIssue('172'), isNull);
-    expect(heightIssue('90'), 'Height should be between 100 and 250 cm.');
+    expect(heightIssue('90'), 'Height should be between 120 and 220 cm.');
+    expect(feetLabel(172), "5'8\"");
     expect(bioIssue('x' * 501), 'Bio should be 500 characters or less.');
   });
 

@@ -50,6 +50,53 @@ class OwnPhoto {
 
 const maxProfilePhotos = 3;
 
+class ProfilePrompt {
+  const ProfilePrompt({required this.prompt, required this.answer});
+
+  factory ProfilePrompt.fromRow(Map<String, dynamic> row) => ProfilePrompt(
+    prompt: row['prompt'] as String? ?? '',
+    answer: row['answer'] as String? ?? '',
+  );
+
+  final String prompt;
+  final String answer;
+}
+
+const maxProfilePrompts = 3;
+const maxPromptAnswer = 200;
+
+const promptOptions = [
+  'My ideal night out looks like',
+  'A fun fact about me',
+  'Two truths and a lie',
+  'My go-to drink order',
+  'The song that gets me on the dance floor',
+  'Best night out I have ever had',
+  "I'm known in my group for",
+  "Don't leave the club without",
+  'My late-night food spot',
+  "I'll never say no to",
+  'The most spontaneous thing I have done',
+  'My weekend usually involves',
+];
+
+/// Everything shown on someone else's full profile beyond the card.
+class ProfileExtras {
+  const ProfileExtras({required this.photos, required this.prompts});
+
+  final List<String> photos;
+  final List<ProfilePrompt> prompts;
+}
+
+const minHeightCm = 120;
+const maxHeightCm = 220;
+
+/// 172 -> 5'8"
+String feetLabel(int cm) {
+  final totalInches = (cm / 2.54).round();
+  return "${totalInches ~/ 12}'${totalInches % 12}\"";
+}
+
 class OwnAccount {
   const OwnAccount({
     required this.hasProfile,
@@ -218,8 +265,8 @@ String? heightIssue(String value) {
     return 'Height should be in centimetres, like 172.';
   }
   final cm = int.parse(trimmed);
-  if (cm < 100 || cm > 250) {
-    return 'Height should be between 100 and 250 cm.';
+  if (cm < minHeightCm || cm > maxHeightCm) {
+    return 'Height should be between $minHeightCm and $maxHeightCm cm.';
   }
   return null;
 }
