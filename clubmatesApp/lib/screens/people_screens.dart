@@ -163,19 +163,8 @@ class _ChatRow extends StatelessWidget {
         child: InkWell(
           onTap: onOpen,
           borderRadius: BorderRadius.circular(20),
-          child: Ink(
+          child: Padding(
             padding: const EdgeInsets.fromLTRB(12, 12, 14, 12),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0x171A1A1A)),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x14281921),
-                  blurRadius: 24,
-                  offset: Offset(0, 8),
-                ),
-              ],
-            ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
