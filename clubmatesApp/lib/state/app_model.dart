@@ -479,7 +479,7 @@ class AppModel extends ChangeNotifier {
     if (_trayReady) return;
     await _tray.initialize(
       settings: const InitializationSettings(
-        android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+        android: AndroidInitializationSettings('ic_notification'),
         iOS: DarwinInitializationSettings(
           requestAlertPermission: false,
           requestBadgePermission: false,
@@ -517,6 +517,8 @@ class AppModel extends ChangeNotifier {
             channelDescription: _alerts.description,
             importance: Importance.high,
             priority: Priority.high,
+            icon: 'ic_notification',
+            color: const Color(0xFF994EA8),
           ),
           iOS: const DarwinNotificationDetails(),
         ),
