@@ -4,7 +4,9 @@ import 'package:flutter/services.dart';
 import '../state/app_model.dart';
 import '../theme/theme.dart';
 import '../ui/club_icon.dart';
+import '../ui/height_picker.dart';
 import '../ui/liquid_glass.dart';
+import '../ui/profile_prompts.dart';
 import '../ui/widgets.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -765,7 +767,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late final TextEditingController _name;
   late final TextEditingController _location;
   late final TextEditingController _bio;
-  late final TextEditingController _height;
 
   @override
   void initState() {
@@ -774,7 +775,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _name = TextEditingController(text: model.displayName);
     _location = TextEditingController(text: model.location);
     _bio = TextEditingController(text: model.bio);
-    _height = TextEditingController(text: model.height);
   }
 
   @override
@@ -782,7 +782,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _name.dispose();
     _location.dispose();
     _bio.dispose();
-    _height.dispose();
     super.dispose();
   }
 
@@ -818,6 +817,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     label: 'Name',
                     hint: 'Aanya',
                     controller: _name,
+                    textCapitalization: TextCapitalization.words,
                     error: nameIssue(_name.text),
                     onChanged: (value) {
                       model.setName(value);
@@ -842,6 +842,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     label: 'Location',
                     hint: 'Bengaluru',
                     controller: _location,
+                    textCapitalization: TextCapitalization.words,
                     error: cityIssue(_location.text),
                     onChanged: (value) {
                       model.setLocation(value);
@@ -849,20 +850,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     },
                   ),
                   const SizedBox(height: 20),
-                  ClubField(
-                    label: 'Height',
-                    hint: '172',
-                    controller: _height,
-                    keyboardType: TextInputType.number,
-                    error: heightIssue(_height.text),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                      LengthLimitingTextInputFormatter(3),
-                    ],
-                    onChanged: (value) {
-                      model.setHeight(value);
-                      setState(() {});
-                    },
+                  const Eyebrow('Height'),
+                  const SizedBox(height: 12),
+                  HeightPicker(
+                    cm: int.tryParse(model.height),
+                    onChanged: (cm) => model.setHeight('$cm'),
                   ),
                   const SizedBox(height: 20),
                   const Eyebrow('Sex'),
@@ -892,6 +884,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                   const SizedBox(height: 20),
                   const PhotoGrid(),
+                  const SizedBox(height: 28),
+                  const Eyebrow('Prompts'),
+                  const SizedBox(height: 6),
+                  Text(
+                    'They show between your photos on your profile.',
+                    style: ClubType.inter(13, color: ClubColors.muted),
+                  ),
+                  const SizedBox(height: 12),
+                  PromptEditorList(
+                    prompts: model.prompts,
+                    onChanged: model.setPrompt,
+                    onRemove: model.removePrompt,
+                  ),
                 ],
               ),
             ),
@@ -907,7 +912,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   nameIssue(_name.text, required: true) != null ||
                       cityIssue(_location.text, required: true) != null ||
                       bioIssue(_bio.text) != null ||
-                      heightIssue(_height.text) != null
+                      heightIssue(model.height) != null
                   ? null
                   : () => model.saveEdits(
                       nextName: _name.text,
@@ -958,7 +963,7 @@ class NotificationsScreen extends StatelessWidget {
               style: ClubType.inter(13, weight: FontWeight.w600),
             ),
             subtitle: Text(
-              'Coming with chat. Saved for when mate chat arrives.',
+              'When a mate sends you a message. The notification never shows what they wrote.',
               style: ClubType.inter(12, color: ClubColors.muted),
             ),
             value: model.notifyMates,
@@ -1073,7 +1078,9 @@ class StatusScreen extends StatelessWidget {
     final model = AppScope.watch(context);
     return _InnerPage(
       title: 'Verification',
-      supporting: 'Your profile has passed both checks.',
+      supporting: model.isVerified
+          ? 'Your profile has passed both checks.'
+          : 'Verification is coming to Clubmates soon.',
       onBack: () => model.go(AppRoute.profile),
       child: Column(
         children: [
@@ -1095,6 +1102,17 @@ class StatusScreen extends StatelessWidget {
           SettingsRow(
             'Identity document',
             detail: model.isVerified ? 'Verified' : 'Not checked',
+            onPressed: model.isVerified
+                ? null
+                : () => ScaffoldMessenger.of(context)
+                    ..hideCurrentSnackBar()
+                    ..showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Identity document checks will be available soon.',
+                        ),
+                      ),
+                    ),
           ),
           SettingsRow(
             'Face check',

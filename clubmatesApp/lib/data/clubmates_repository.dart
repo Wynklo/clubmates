@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'chat_records.dart';
 import 'records.dart';
 
 const wrongCodeMessage = 'That code did not work. Try again.';
@@ -376,6 +377,64 @@ class ClubmatesRepository {
         .eq('id', photo.id);
   }
 
+  Future<List<ProfilePrompt>> loadOwnPrompts() async {
+    final rows = await _db
+        .from('profile_prompts')
+        .select('prompt, answer')
+        .eq('user_id', _uid)
+        .order('position');
+    return [for (final row in rows) ProfilePrompt.fromRow(row)];
+  }
+
+  /// Replaces the member's prompts, keeping them in the given order.
+  Future<void> saveOwnPrompts(List<ProfilePrompt> prompts) async {
+    final uid = _uid;
+    final kept = prompts.take(maxProfilePrompts).toList();
+    if (kept.isNotEmpty) {
+      await _db.from('profile_prompts').upsert([
+        for (var i = 0; i < kept.length; i++)
+          {
+            'user_id': uid,
+            'position': i + 1,
+            'prompt': kept[i].prompt.trim(),
+            'answer': kept[i].answer.trim(),
+          },
+      ], onConflict: 'user_id,position');
+    }
+    await _db
+        .from('profile_prompts')
+        .delete()
+        .eq('user_id', uid)
+        .gt('position', kept.length);
+  }
+
+  /// All approved photos (primary first) and prompts for someone's profile.
+  Future<ProfileExtras> profileExtras(String userId) async {
+    final photoRows = await _db
+        .from('profile_photos')
+        .select('storage_path, is_primary, display_order')
+        .eq('user_id', userId)
+        .eq('moderation_status', 'APPROVED')
+        .order('display_order');
+    final ordered = [
+      ...photoRows.where((row) => row['is_primary'] == true),
+      ...photoRows.where((row) => row['is_primary'] != true),
+    ];
+    final photos = <String>[
+      for (final row in ordered)
+        await _signedUrl(row['storage_path'] as String),
+    ];
+    final promptRows = await _db
+        .from('profile_prompts')
+        .select('prompt, answer')
+        .eq('user_id', userId)
+        .order('position');
+    return ProfileExtras(
+      photos: photos,
+      prompts: [for (final row in promptRows) ProfilePrompt.fromRow(row)],
+    );
+  }
+
   Future<List<PublicPerson>> discover() async {
     final rows = await _db.rpc(
       'get_discovery_candidates',
@@ -486,6 +545,142 @@ class ClubmatesRepository {
         .eq('blocker_id', _uid)
         .eq('blocked_id', userId);
   }
+
+  String? get userId => _db.auth.currentUser?.id;
+
+  Future<Map<String, MateThread>> mateThreads() async {
+    final rows = await _db.rpc('mate_threads') as List<dynamic>;
+    return {
+      for (final row in rows)
+        row['mate_id'] as String: MateThread.fromRow(
+          Map<String, dynamic>.from(row as Map),
+        ),
+    };
+  }
+
+  /// Newest first. Pass [before] to page back through older messages.
+  Future<List<ChatMessage>> messages(
+    String mateId, {
+    ChatMessage? before,
+    int limit = 30,
+  }) async {
+    var query = _db.from('mate_messages').select().eq('mate_id', mateId);
+    if (before != null) {
+      query = query.lt(
+        'created_at',
+        before.createdAt.toUtc().toIso8601String(),
+      );
+    }
+    final rows = await query
+        .order('created_at', ascending: false)
+        .order('id', ascending: false)
+        .limit(limit);
+    return [for (final row in rows) ChatMessage.fromRow(row)];
+  }
+
+  Future<ChatMessage> sendMessage(
+    String mateId, {
+    String? body,
+    String? imagePath,
+    required String clientId,
+  }) async {
+    final row = await _db.rpc(
+      'send_message',
+      params: {
+        'p_mate_id': mateId,
+        'p_body': body,
+        'p_image_path': imagePath,
+        'p_client_id': clientId,
+      },
+    );
+    return ChatMessage.fromRow(Map<String, dynamic>.from(row as Map));
+  }
+
+  Future<ChatMessage> unsendMessage(String messageId) async {
+    final row = await _db.rpc(
+      'delete_message',
+      params: {'p_message_id': messageId},
+    );
+    return ChatMessage.fromRow(Map<String, dynamic>.from(row as Map));
+  }
+
+  Future<void> markThreadRead(String mateId) {
+    return _db.rpc('mark_thread_read', params: {'p_mate_id': mateId});
+  }
+
+  Future<String> uploadChatPhoto(String mateId, Uint8List bytes) async {
+    final path = '$_uid/$mateId/${randomToken(24)}.jpg';
+    await _db.storage
+        .from('chat-images')
+        .uploadBinary(
+          path,
+          bytes,
+          fileOptions: const FileOptions(contentType: 'image/jpeg'),
+        );
+    return path;
+  }
+
+  static const chatPhotoLinkLife = Duration(minutes: 10);
+
+  Future<String> chatPhotoUrl(String path) {
+    return _db.storage
+        .from('chat-images')
+        .createSignedUrl(path, chatPhotoLinkLife.inSeconds);
+  }
+
+  Future<void> report(
+    String userId, {
+    required String reason,
+    String? details,
+    String? messageId,
+    bool block = false,
+  }) {
+    return _db.rpc(
+      'report_user',
+      params: {
+        'p_user_id': userId,
+        'p_reason': reason,
+        'p_details': details,
+        'p_message_id': messageId,
+        'p_block': block,
+      },
+    );
+  }
+
+  /// Row changes for one thread, or for every thread the member can read
+  /// when [mateId] is null. Row level security decides what arrives.
+  RealtimeChannel messageChanges(
+    String name, {
+    String? mateId,
+    required void Function(PostgresChangePayload) onChange,
+  }) {
+    return _db
+        .channel(name)
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'mate_messages',
+          filter: mateId == null
+              ? null
+              : PostgresChangeFilter(
+                  type: PostgresChangeFilterType.eq,
+                  column: 'mate_id',
+                  value: mateId,
+                ),
+          callback: onChange,
+        );
+  }
+
+  /// Private broadcast channel for typing; only the two mates can join.
+  RealtimeChannel typingChannel(String mateId) {
+    return _db.channel(
+      'chat:$mateId',
+      opts: const RealtimeChannelConfig(private: true),
+    );
+  }
+
+  Future<void> closeChannel(RealtimeChannel channel) =>
+      _db.removeChannel(channel);
 
   Future<List<PublicPerson>> _peopleFromRows(List<dynamic> rows) async {
     final typed = [

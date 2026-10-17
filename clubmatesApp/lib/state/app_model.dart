@@ -8,26 +8,40 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
+import 'package:geocoding/geocoding.dart' show Geocoding;
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../data/chat_records.dart';
 import '../data/clubmates_repository.dart';
 import '../data/firebase_setup.dart';
 import '../data/records.dart';
+import 'chat_controller.dart';
+export '../data/chat_records.dart'
+    show ChatMessage, MateThread, SendState, reportReasons;
+export 'chat_controller.dart' show ChatController;
 export '../data/records.dart'
     show
         bioIssue,
         cityIssue,
         dobIsComplete,
         dobIssue,
+        feetLabel,
         heightIssue,
         interestCode,
         interestLabels,
+        maxHeightCm,
         maxProfilePhotos,
+        maxProfilePrompts,
+        maxPromptAnswer,
+        minHeightCm,
         nameIssue,
         OwnPhoto,
-        phoneIssue;
+        phoneIssue,
+        ProfileExtras,
+        ProfilePrompt,
+        promptOptions;
 import '../data/supabase_config.dart';
 
 enum AppRoute {
@@ -41,7 +55,7 @@ enum AppRoute {
   nightlife,
   about,
   photos,
-  identity,
+  prompts,
   face,
   verified,
   club,
@@ -109,13 +123,6 @@ DateTime endOfNight([DateTime? from]) {
   return now.isBefore(today)
       ? today
       : DateTime(now.year, now.month, now.day + 1, 4);
-}
-
-class ChatLine {
-  const ChatLine(this.text, {this.mine = true});
-
-  final String text;
-  final bool mine;
 }
 
 const meera = Person(
@@ -226,8 +233,6 @@ class AppModel extends ChangeNotifier {
   bool _hasGender = false;
   bool _hasCity = false;
   bool _onboardingComplete = false;
-  String idType = 'Aadhaar';
-  bool uploaded = false;
   bool discoverable = true;
   DateTime? outTonightUntil;
   bool locationOn = false;
@@ -240,12 +245,22 @@ class AppModel extends ChangeNotifier {
   bool showMates = true;
   int profiles = 0;
   List<OwnPhoto> ownPhotos = [];
+  List<ProfilePrompt> prompts = [];
   List<BlockedPerson> blocked = [];
   Person? opened;
   final List<Person> _candidates = [];
   final List<Person> _incoming = [];
   final List<Person> _mateRows = [];
-  final Map<String, List<ChatLine>> _chats = {};
+  Map<String, MateThread> threads = {};
+  ChatController? chat;
+  RealtimeChannel? _inbox;
+  Timer? _threadsSoon;
+
+  int get unreadMessages =>
+      threads.values.fold(0, (sum, thread) => sum + thread.unread);
+
+  MateThread? threadFor(Person person) =>
+      person.mateId == null ? null : threads[person.mateId];
 
   AppTab get tab => switch (route) {
     AppRoute.invites || AppRoute.inviteDetail => AppTab.invites,
@@ -309,12 +324,14 @@ class AppModel extends ChangeNotifier {
   }
 
   void go(AppRoute next) {
+    if (next != AppRoute.mateChat) _closeChat();
     route = next;
     errorMessage = null;
     notifyListeners();
   }
 
   void goTab(AppTab next) {
+    _closeChat();
     route = switch (next) {
       AppTab.club => AppRoute.club,
       AppTab.invites => AppRoute.invites,
@@ -371,7 +388,10 @@ class AppModel extends ChangeNotifier {
     super.dispose();
   }
 
-  bool get _pushSupported => FirebaseSetup.ready && Platform.isAndroid;
+  bool get _pushSupported =>
+      FirebaseSetup.ready && (Platform.isAndroid || Platform.isIOS);
+
+  String get _pushPlatform => Platform.isIOS ? 'ios' : 'android';
 
   // The notify Edge Function sends through FCM HTTP v1 to registration
   // tokens, so the token calls are kept until it moves to installation IDs.
@@ -383,17 +403,18 @@ class AppModel extends ChangeNotifier {
       final permission = await messaging.requestPermission();
       if (permission.authorizationStatus == AuthorizationStatus.denied) return;
       await _setupTray();
+      if (Platform.isIOS && !await _apnsReady(messaging)) return;
       // ignore: deprecated_member_use
       final token = await messaging.getToken();
       if (token == null) return;
       _pushToken = token;
-      await _api.saveDeviceToken(token, 'android');
+      await _api.saveDeviceToken(token, _pushPlatform);
       // ignore: deprecated_member_use
       _tokenRefresh ??= messaging.onTokenRefresh.listen((next) async {
         if (!_api.hasSession) return;
         _pushToken = next;
         try {
-          await _api.saveDeviceToken(next, 'android');
+          await _api.saveDeviceToken(next, _pushPlatform);
         } catch (error) {
           debugPrint('Push token refresh failed: $error');
         }
@@ -402,6 +423,14 @@ class AppModel extends ChangeNotifier {
         _pushListening = true;
         FirebaseMessaging.onMessageOpenedApp.listen(_openFromPush);
         FirebaseMessaging.onMessage.listen((message) {
+          final mateId = message.data['mate_id'];
+          if (message.data['route'] == 'chat') {
+            _refreshThreadsSoon();
+            final reading =
+                route == AppRoute.mateChat && chat?.mateId == mateId;
+            if (!reading) _showInTray(message);
+            return;
+          }
           refreshPeople();
           _showInTray(message);
         });
@@ -409,6 +438,17 @@ class AppModel extends ChangeNotifier {
     } catch (error) {
       debugPrint('Push setup failed: $error');
     }
+  }
+
+  /// iOS hands Firebase the APNs token a moment after permission is granted;
+  /// asking for the FCM token before then throws.
+  Future<bool> _apnsReady(FirebaseMessaging messaging) async {
+    for (var attempt = 0; attempt < 10; attempt++) {
+      if (await messaging.getAPNSToken() != null) return true;
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+    }
+    debugPrint('APNs token unavailable; iOS push stays off.');
+    return false;
   }
 
   /// Stops pushes to this phone before the session ends.
@@ -440,6 +480,11 @@ class AppModel extends ChangeNotifier {
     await _tray.initialize(
       settings: const InitializationSettings(
         android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+        iOS: DarwinInitializationSettings(
+          requestAlertPermission: false,
+          requestBadgePermission: false,
+          requestSoundPermission: false,
+        ),
       ),
       onDidReceiveNotificationResponse: (response) =>
           _openRoute(response.payload),
@@ -452,17 +497,19 @@ class AppModel extends ChangeNotifier {
     _trayReady = true;
   }
 
-  /// Android leaves pushes out of the notification bar while the app is
-  /// open, so they are posted here instead.
+  /// Android and iOS leave pushes out of the notification bar while the app
+  /// is open, so they are posted here instead (skipped for the open chat).
   Future<void> _showInTray(RemoteMessage message) async {
     final notification = message.notification;
     if (!_trayReady || notification == null) return;
+    final mateId = message.data['mate_id'];
+    final chatPush = message.data['route'] == 'chat' && mateId != null;
     try {
       await _tray.show(
-        id: _trayId++,
+        id: chatPush ? mateId.hashCode : _trayId++,
         title: notification.title,
         body: notification.body,
-        payload: message.data['route'],
+        payload: _pushTarget(message),
         notificationDetails: NotificationDetails(
           android: AndroidNotificationDetails(
             _alerts.id,
@@ -471,6 +518,7 @@ class AppModel extends ChangeNotifier {
             importance: Importance.high,
             priority: Priority.high,
           ),
+          iOS: const DarwinNotificationDetails(),
         ),
       );
     } catch (error) {
@@ -479,10 +527,28 @@ class AppModel extends ChangeNotifier {
   }
 
   Future<void> _openFromPush(RemoteMessage message) =>
-      _openRoute(message.data['route']);
+      _openRoute(_pushTarget(message));
+
+  String? _pushTarget(RemoteMessage message) {
+    final route = message.data['route'];
+    final mateId = message.data['mate_id'];
+    return route == 'chat' && mateId != null ? 'chat:$mateId' : route;
+  }
 
   Future<void> _openRoute(String? route) async {
     if (!live || !_api.hasSession || !_onboardingComplete) return;
+    if (route != null && route.startsWith('chat:')) {
+      final mateId = route.substring(5);
+      await refreshPeople();
+      final person = _mateRows.where((p) => p.mateId == mateId).firstOrNull;
+      if (person == null) {
+        go(AppRoute.mates);
+        return;
+      }
+      opened = person;
+      openChat();
+      return;
+    }
     final target = switch (route) {
       'invites' || 'likes' => AppRoute.invites,
       'mates' => AppRoute.mates,
@@ -880,15 +946,121 @@ class AppModel extends ChangeNotifier {
     });
   }
 
-  void setIdType(String value) {
-    idType = value;
+  void setPrompt(int index, ProfilePrompt prompt) {
+    final next = [...prompts];
+    if (index < next.length) {
+      next[index] = prompt;
+    } else if (next.length < maxProfilePrompts) {
+      next.add(prompt);
+    }
+    prompts = next;
     notifyListeners();
   }
 
-  void markUploaded() {
-    uploaded = true;
+  void removePrompt(int index) {
+    if (index >= prompts.length) return;
+    prompts = [...prompts]..removeAt(index);
     notifyListeners();
   }
+
+  /// Saves prompts. From onboarding it moves on to the face step.
+  Future<void> savePrompts({bool onboarding = false}) async {
+    if (!live) {
+      if (onboarding) go(AppRoute.face);
+      notifyListeners();
+      return;
+    }
+    await _guard(() async {
+      await _api.saveOwnPrompts(prompts);
+      prompts = await _api.loadOwnPrompts();
+      if (onboarding) go(AppRoute.face);
+    });
+  }
+
+  final Map<String, ProfileExtras> _extras = {};
+  final Set<String> _extrasLoading = {};
+
+  /// Photos and prompts for a full profile; loads them the first time.
+  ProfileExtras? extrasFor(Person person) {
+    if (!live || person.id.isEmpty) return null;
+    final cached = _extras[person.id];
+    if (cached != null || _extrasLoading.contains(person.id)) return cached;
+    _extrasLoading.add(person.id);
+    _api
+        .profileExtras(person.id)
+        .then((extras) {
+          _extras[person.id] = extras;
+          notifyListeners();
+        })
+        .catchError((Object error) {
+          debugPrint('Profile extras failed: $error');
+        })
+        .whenComplete(() => _extrasLoading.remove(person.id));
+    return null;
+  }
+
+  /// Fills the city from the phone's location and saves the point too.
+  Future<void> useCurrentLocation() async {
+    if (_locating) return;
+    _locating = true;
+    errorMessage = null;
+    notifyListeners();
+    try {
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        errorMessage = 'Allow location in Settings, or pick a city below.';
+        return;
+      }
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        errorMessage = 'Turn on Location Services, or pick a city below.';
+        return;
+      }
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 15),
+        ),
+      );
+      final places = await Geocoding().placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+      final city = places
+          .map(
+            (place) => [place.locality, place.subAdministrativeArea]
+                .whereType<String>()
+                .firstWhere((name) => name.trim().isNotEmpty, orElse: () => ''),
+          )
+          .firstWhere((name) => name.isNotEmpty, orElse: () => '');
+      if (city.isEmpty) {
+        errorMessage = 'Could not find your city. Pick one below.';
+        return;
+      }
+      location = city;
+      errorMessage = cityIssue(city, required: true);
+      locationOn = true;
+      if (live && _api.hasSession) {
+        await _api.saveLocation(
+          latitude: position.latitude,
+          longitude: position.longitude,
+        );
+        _locationSavedAt = DateTime.now();
+      }
+    } catch (error) {
+      debugPrint('Current location failed: $error');
+      errorMessage = 'Could not get your location. Pick a city below.';
+    } finally {
+      _locating = false;
+      notifyListeners();
+    }
+  }
+
+  bool _locating = false;
+  bool get locating => _locating;
 
   Future<void> enterApp() async {
     if (!live) {
@@ -985,31 +1157,87 @@ class AppModel extends ChangeNotifier {
   }
 
   void openChat() {
-    if (opened == null) return;
+    final person = opened;
+    if (person == null) return;
+    final mateId = person.mateId ?? (live ? null : 'sample-${person.name}');
+    if (mateId == null) return;
+    if (chat?.mateId != mateId) {
+      _closeChat();
+      chat = ChatController(
+        api: live ? _api : null,
+        mateId: mateId,
+        myId: live ? (_api.userId ?? '') : 'me',
+        onActivity: _refreshThreadsSoon,
+      )..start();
+    }
     go(AppRoute.mateChat);
   }
 
-  List<ChatLine> chatForOpened() {
-    final person = opened;
-    if (person == null) return const [];
-    return _chats[_chatKey(person)] ?? const [];
+  void _closeChat() {
+    final open = chat;
+    if (open == null) return;
+    chat = null;
+    open.dispose();
+    _refreshThreadsSoon();
   }
 
-  void sendChat(String text) {
-    final trimmed = text.trim();
-    final person = opened;
-    if (trimmed.isEmpty || person == null) return;
-    final key = _chatKey(person);
-    _chats[key] = [...?_chats[key], ChatLine(trimmed)];
-    notifyListeners();
+  /// Files a report. With [block], the person is also blocked, which ends
+  /// the mate connection and closes the chat.
+  Future<bool> report(
+    Person person, {
+    required String reason,
+    String? details,
+    String? messageId,
+    bool block = false,
+  }) async {
+    if (!live || person.id.isEmpty) return true;
+    final ok = await _guard(() async {
+      await _api.report(
+        person.id,
+        reason: reason,
+        details: details,
+        messageId: messageId,
+        block: block,
+      );
+      if (block) {
+        _candidates.removeWhere((item) => item.id == person.id);
+        _incoming.removeWhere((item) => item.id == person.id);
+        _mateRows.removeWhere((item) => item.id == person.id);
+        if (person.mateId != null) threads.remove(person.mateId);
+        blocked = await _api.blocks();
+      }
+    });
+    if (ok && block) go(AppRoute.mates);
+    return ok;
   }
 
-  void exploreClubsTogether() {
-    sendChat('Shared a plan: Explore clubs together');
+  void _startInbox() {
+    final uid = _api.userId;
+    if (_inbox != null || uid == null) return;
+    _inbox = _api.messageChanges(
+      'inbox:$uid',
+      onChange: (_) => _refreshThreadsSoon(),
+    )..subscribe();
   }
 
-  void shareNearbyDrinks() {
-    sendChat('Shared a plan: Find drinks nearby');
+  void _stopInbox() {
+    final inbox = _inbox;
+    _inbox = null;
+    _threadsSoon?.cancel();
+    if (inbox != null) _api.closeChannel(inbox);
+  }
+
+  void _refreshThreadsSoon() {
+    if (!live || !_api.hasSession) return;
+    _threadsSoon?.cancel();
+    _threadsSoon = Timer(const Duration(milliseconds: 400), () async {
+      try {
+        threads = await _api.mateThreads();
+        notifyListeners();
+      } catch (error) {
+        debugPrint('Thread refresh failed: $error');
+      }
+    });
   }
 
   Future<void> setNotify({bool? invites, bool? mates, bool? nearby}) async {
@@ -1125,10 +1353,6 @@ class AppModel extends ChangeNotifier {
       (item) => item.id == person.id && item.name == person.name,
     );
     if (index >= 0) _candidates.removeAt(index);
-  }
-
-  String _chatKey(Person person) {
-    return person.id.isEmpty ? person.name : person.id;
   }
 
   Future<void> passInvite() async {
@@ -1259,6 +1483,8 @@ class AppModel extends ChangeNotifier {
         gender: genderCode(sex),
         heightCm: height.trim().isEmpty ? null : int.parse(height.trim()),
       );
+      await _api.saveOwnPrompts(prompts);
+      prompts = await _api.loadOwnPrompts();
       final chosen = interestCode(lookingFor);
       if (_hasPrivate && chosen != null) {
         await _api.updatePrivate(interestedIn: chosen);
@@ -1328,7 +1554,17 @@ class AppModel extends ChangeNotifier {
     }
     _applyAccount(account);
     ownPhotos = account.hasProfile ? await _api.loadOwnPhotos() : [];
+    prompts = account.hasProfile ? await _loadPromptsSafely() : [];
     await _openNextStep();
+  }
+
+  Future<List<ProfilePrompt>> _loadPromptsSafely() async {
+    try {
+      return await _api.loadOwnPrompts();
+    } catch (error) {
+      debugPrint('Prompts failed: $error');
+      return prompts;
+    }
   }
 
   Future<void> _openNextStep() async {
@@ -1353,7 +1589,7 @@ class AppModel extends ChangeNotifier {
       return;
     }
     if (!_onboardingComplete) {
-      go(AppRoute.photos);
+      go(ownPhotos.isEmpty ? AppRoute.photos : AppRoute.prompts);
       return;
     }
     await _loadPeople();
@@ -1361,6 +1597,7 @@ class AppModel extends ChangeNotifier {
   }
 
   Future<void> _loadPeople() async {
+    _extras.clear();
     final discovered = await _api.discover();
     final invites = await _api.incomingInvites();
     final mates = await _api.mates();
@@ -1373,8 +1610,15 @@ class AppModel extends ChangeNotifier {
     _mateRows
       ..clear()
       ..addAll(mates.map(_card));
+    try {
+      threads = await _api.mateThreads();
+      _startInbox();
+    } catch (error) {
+      debugPrint('Chat threads failed: $error');
+    }
     blocked = await _api.blocks();
     ownPhotos = await _api.loadOwnPhotos();
+    prompts = await _loadPromptsSafely();
   }
 
   void _applyAccount(OwnAccount account) {
@@ -1448,12 +1692,16 @@ class AppModel extends ChangeNotifier {
     _interestedIn = null;
     _verified = false;
     ownPhotos = [];
+    prompts = [];
+    _extras.clear();
     blocked = [];
     opened = null;
     _candidates.clear();
     _incoming.clear();
     _mateRows.clear();
-    _chats.clear();
+    _closeChat();
+    _stopInbox();
+    threads = {};
     _locationSavedAt = null;
     locationOn = false;
     outTonightUntil = null;

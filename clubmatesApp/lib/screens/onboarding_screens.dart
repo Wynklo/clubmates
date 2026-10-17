@@ -5,8 +5,8 @@ import 'package:flutter/services.dart';
 
 import '../state/app_model.dart';
 import '../theme/theme.dart';
-import '../ui/club_icon.dart';
-import '../ui/liquid_glass.dart';
+import '../ui/height_picker.dart';
+import '../ui/profile_prompts.dart';
 import '../ui/widgets.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -263,6 +263,7 @@ class _NameScreenState extends State<NameScreen> {
         ClubField(
           hint: 'First name',
           controller: _controller,
+          textCapitalization: TextCapitalization.words,
           onChanged: model.setName,
         ),
       ],
@@ -466,9 +467,20 @@ class _LocationScreenState extends State<LocationScreen> {
             : model.saveCity,
       ),
       children: [
+        SecondaryButton(
+          model.locating ? 'Finding you…' : 'Use my current location',
+          icon: 'location',
+          loading: model.locating,
+          onPressed: () async {
+            await model.useCurrentLocation();
+            if (mounted) _controller.text = model.location;
+          },
+        ),
+        const SizedBox(height: 14),
         ClubField(
-          hint: 'Search a city',
+          hint: 'Or type your city',
           controller: _controller,
+          textCapitalization: TextCapitalization.words,
           onChanged: model.setLocation,
         ),
         const SizedBox(height: 20),
@@ -543,20 +555,6 @@ class AboutScreen extends StatefulWidget {
 }
 
 class _AboutScreenState extends State<AboutScreen> {
-  late final TextEditingController _height;
-
-  @override
-  void initState() {
-    super.initState();
-    _height = TextEditingController(text: AppScope.read(context).height);
-  }
-
-  @override
-  void dispose() {
-    _height.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     final model = AppScope.watch(context);
@@ -586,15 +584,9 @@ class _AboutScreenState extends State<AboutScreen> {
         const SizedBox(height: 20),
         const Eyebrow('Height'),
         const SizedBox(height: 12),
-        ClubField(
-          hint: '172',
-          controller: _height,
-          keyboardType: TextInputType.number,
-          inputFormatters: [
-            FilteringTextInputFormatter.digitsOnly,
-            LengthLimitingTextInputFormatter(3),
-          ],
-          onChanged: model.setHeight,
+        HeightPicker(
+          cm: int.tryParse(model.height),
+          onChanged: (cm) => model.setHeight('$cm'),
         ),
       ],
     );
@@ -618,7 +610,7 @@ class PhotosScreen extends StatelessWidget {
         loading: model.busy,
         onPressed: model.ownPhotos.isEmpty
             ? null
-            : () => model.go(AppRoute.identity),
+            : () => model.go(AppRoute.prompts),
       ),
       children: [
         const PhotoGrid(),
@@ -653,147 +645,37 @@ class PhotosScreen extends StatelessWidget {
   }
 }
 
-class IdentityScreen extends StatelessWidget {
-  const IdentityScreen({super.key});
+class PromptsScreen extends StatelessWidget {
+  const PromptsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     final model = AppScope.watch(context);
     return OnboardingFrame(
-      title: 'Verify your identity',
-      supporting: 'Verification helps keep Clubmates real.',
+      title: 'Add your prompts',
+      supporting:
+          'Answer up to 3 prompts. They sit between your photos and give people something to talk about.',
+      error: model.errorMessage,
       progress: 8,
       onBack: () => model.go(AppRoute.photos),
       footer: PrimaryButton(
         'Continue',
-        onPressed: () => model.go(AppRoute.face),
+        loading: model.busy,
+        onPressed: model.prompts.isEmpty
+            ? null
+            : () => model.savePrompts(onboarding: true),
       ),
       children: [
-        for (final type in ['Aadhaar', 'PAN']) ...[
-          _IdOption(
-            type,
-            selected: model.idType == type,
-            onPressed: () => model.setIdType(type),
-          ),
-          const SizedBox(height: 10),
-        ],
-        const SizedBox(height: 6),
-        DecoratedBox(
-          decoration: glassPaint(selected: model.uploaded, radius: 24),
-          child: Material(
-            type: MaterialType.transparency,
-            child: InkWell(
-              onTap: model.live ? null : model.markUploaded,
-              borderRadius: BorderRadius.circular(24),
-              child: SizedBox(
-                height: 104,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    ClubIcon(
-                      model.uploaded ? 'check' : 'plus',
-                      color: model.uploaded ? ClubColors.plum : ClubColors.ink,
-                    ),
-                    const SizedBox(width: 9),
-                    Text(
-                      model.uploaded ? 'Document uploaded' : 'Upload document',
-                      style: ClubType.inter(
-                        16,
-                        weight: FontWeight.w600,
-                        height: 1,
-                        color: model.uploaded
-                            ? ClubColors.plum
-                            : ClubColors.ink,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+        PromptEditorList(
+          prompts: model.prompts,
+          onChanged: model.setPrompt,
+          onRemove: model.removePrompt,
         ),
         const SizedBox(height: 12),
         const Note(
-          'Identity documents are not collected in this version. A verified badge is added by Clubmates, not from this screen.',
+          'Add at least one. You can change them later in your profile.',
         ),
       ],
-    );
-  }
-}
-
-class _IdOption extends StatelessWidget {
-  const _IdOption(
-    this.label, {
-    required this.selected,
-    required this.onPressed,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: glassPaint(selected: selected, radius: 22),
-      child: Material(
-        type: MaterialType.transparency,
-        child: InkWell(
-          onTap: onPressed,
-          borderRadius: BorderRadius.circular(22),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        label,
-                        style: ClubType.inter(
-                          16,
-                          weight: FontWeight.w600,
-                          height: 1.2,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Government ID verification',
-                        style: ClubType.inter(
-                          13,
-                          color: ClubColors.muted,
-                          height: 1.2,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  width: 22,
-                  height: 22,
-                  decoration: BoxDecoration(
-                    color: selected ? ClubColors.brand : ClubColors.field,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: selected ? ClubColors.brand : ClubColors.border,
-                    ),
-                  ),
-                  child: selected
-                      ? const Center(
-                          child: ClubIcon(
-                            'check',
-                            size: 16,
-                            color: Colors.white,
-                          ),
-                        )
-                      : null,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
@@ -807,7 +689,7 @@ class FaceScreen extends StatelessWidget {
     return OnboardingFrame(
       title: "Confirm it's you",
       supporting: 'Look at the camera so we can verify your profile.',
-      onBack: () => model.go(AppRoute.identity),
+      onBack: () => model.go(AppRoute.prompts),
       footer: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
