@@ -64,4 +64,16 @@ void main() {
     expect(interestCode('Everyone'), 'EVERYONE');
     expect(interestLabels['NON_BINARY'], 'Non-binary');
   });
+
+  test('plan tonight and interests fit the database limits', () {
+    expect(planIssue('Dinner, then a bar'), isNull);
+    expect(planIssue('x' * 121), 'Keep your plan to 120 characters.');
+    for (final idea in planSuggestions) {
+      expect(idea.length, lessThanOrEqualTo(maxPlanTonight));
+    }
+    expect(interestOptions.toSet(), hasLength(interestOptions.length));
+    final longest = [...interestOptions]
+      ..sort((a, b) => b.length.compareTo(a.length));
+    expect(longest.take(maxInterests).join().length, lessThanOrEqualTo(180));
+  });
 }

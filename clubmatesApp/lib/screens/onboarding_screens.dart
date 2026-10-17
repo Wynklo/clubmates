@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../state/app_model.dart';
 import '../theme/theme.dart';
 import '../ui/height_picker.dart';
+import '../ui/nightlife_editor.dart';
 import '../ui/profile_prompts.dart';
 import '../ui/widgets.dart';
 
@@ -504,43 +505,48 @@ class _LocationScreenState extends State<LocationScreen> {
   }
 }
 
-class NightlifeScreen extends StatelessWidget {
+class NightlifeScreen extends StatefulWidget {
   const NightlifeScreen({super.key});
+
+  @override
+  State<NightlifeScreen> createState() => _NightlifeScreenState();
+}
+
+class _NightlifeScreenState extends State<NightlifeScreen> {
+  late final TextEditingController _plan = TextEditingController(
+    text: AppScope.read(context).planTonight,
+  );
+
+  @override
+  void dispose() {
+    _plan.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final model = AppScope.watch(context);
     return OnboardingFrame(
       title: 'What kind of night are you after?',
-      supporting: "Tell people what you're usually up for.",
+      supporting: 'Share a plan for tonight and what you are into.',
       progress: 5,
       onBack: () => model.go(AppRoute.location),
       footer: PrimaryButton(
         'Continue',
-        onPressed: () => model.go(AppRoute.about),
+        onPressed: planIssue(model.planTonight) != null
+            ? null
+            : () => model.go(AppRoute.about),
       ),
       children: [
-        const ClubField(label: 'Tonight', hint: 'Dinner, then a bar.'),
-        const SizedBox(height: 20),
-        const ClubField(
-          label: 'Usually out for',
-          hint: 'Drinks, cafés and late-night food.',
-        ),
-        const SizedBox(height: 20),
-        const ClubField(
-          label: "I'll be at",
-          hint: 'Somewhere around Koregaon Park.',
-        ),
-        const SizedBox(height: 20),
-        ChipWrap(
-          children: [
-            for (final item in nightlifeOptions)
-              ChoiceChipButton(
-                item,
-                selected: model.interests.contains(item),
-                onPressed: () => model.toggleInterest(item),
-              ),
-          ],
+        const Eyebrow('Plan tonight'),
+        const SizedBox(height: 10),
+        PlanTonightEditor(controller: _plan, onChanged: model.setPlanTonight),
+        const SizedBox(height: 28),
+        const Eyebrow('Interests'),
+        const SizedBox(height: 10),
+        InterestPicker(
+          selected: model.interests,
+          onToggle: model.toggleInterest,
         ),
       ],
     );

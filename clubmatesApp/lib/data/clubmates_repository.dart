@@ -176,7 +176,8 @@ class ClubmatesRepository {
     final profile = await _db
         .from('profiles')
         .select(
-          'display_name, bio, city, gender, height_cm, is_verified, out_tonight_until',
+          'display_name, bio, city, gender, height_cm, is_verified, '
+          'out_tonight_until, plan_tonight, interests',
         )
         .eq('id', uid)
         .maybeSingle();
@@ -207,7 +208,21 @@ class ClubmatesRepository {
       notifyInvites: private?['notify_invites'] != false,
       notifyMates: private?['notify_mates'] != false,
       notifyNearby: private?['notify_nearby'] == true,
+      planTonight: profile['plan_tonight'] as String? ?? '',
+      interests: _strings(profile['interests']),
     );
+  }
+
+  /// Saves what the member is up for tonight; empty clears it.
+  Future<void> updateNightlife({String? planTonight, List<String>? interests}) {
+    final plan = planTonight?.trim();
+    return _db
+        .from('profiles')
+        .update({
+          if (plan != null) 'plan_tonight': plan.isEmpty ? null : plan,
+          'interests': ?interests,
+        })
+        .eq('id', _uid);
   }
 
   Future<void> createProfile(String displayName) {
@@ -688,6 +703,7 @@ class ClubmatesRepository {
     ];
     final ids = [for (final row in typed) row['id'] as String];
     final photos = await _primaryPhotos(ids);
+    final nightlife = await _nightlife(ids);
     return [
       for (final row in typed)
         PublicPerson(
@@ -699,9 +715,36 @@ class ClubmatesRepository {
           verified: row['is_verified'] == true,
           photoUrl: photos[row['id']] ?? '',
           outTonightUntil: parseTimestamp(row['out_tonight_until']),
+          planTonight: nightlife[row['id']]?.plan ?? '',
+          interests: nightlife[row['id']]?.interests ?? const [],
         ),
     ];
   }
+
+  Future<Map<String, ({String plan, List<String> interests})>> _nightlife(
+    List<String> ids,
+  ) async {
+    if (ids.isEmpty) return {};
+    try {
+      final rows = await _db
+          .from('profiles')
+          .select('id, plan_tonight, interests')
+          .inFilter('id', ids);
+      return {
+        for (final row in rows)
+          row['id'] as String: (
+            plan: row['plan_tonight'] as String? ?? '',
+            interests: _strings(row['interests']),
+          ),
+      };
+    } catch (error) {
+      debugPrint('Nightlife fields failed: $error');
+      return {};
+    }
+  }
+
+  List<String> _strings(Object? value) =>
+      value is List ? [for (final item in value) '$item'] : const [];
 
   Future<Map<String, PublicPerson>> _peopleByIds(List<String> ids) async {
     if (ids.isEmpty) return {};
@@ -749,6 +792,8 @@ class ClubmatesRepository {
       inviteId: inviteId ?? person.inviteId,
       mateId: mateId ?? person.mateId,
       outTonightUntil: person.outTonightUntil,
+      planTonight: person.planTonight,
+      interests: person.interests,
     );
   }
 

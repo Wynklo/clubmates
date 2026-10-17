@@ -11,6 +11,8 @@ class PublicPerson {
     this.inviteId,
     this.mateId,
     this.outTonightUntil,
+    this.planTonight = '',
+    this.interests = const [],
   });
 
   final String id;
@@ -23,6 +25,48 @@ class PublicPerson {
   final String? inviteId;
   final String? mateId;
   final DateTime? outTonightUntil;
+  final String planTonight;
+  final List<String> interests;
+}
+
+const maxPlanTonight = 120;
+const maxInterests = 6;
+
+const planSuggestions = [
+  'Dinner, then a bar',
+  'Dancing till late',
+  'Chill drinks with good music',
+  'Rooftop sundowners',
+  'Live gig, then food',
+  'Open to ideas',
+];
+
+const interestOptions = [
+  'Drinks',
+  'Clubbing',
+  'Live Music',
+  'Techno',
+  'House Music',
+  'Hip-hop',
+  'Bollywood Nights',
+  'Rooftops',
+  'Cocktail Bars',
+  'Craft Beer',
+  'Cafés',
+  'Dinner',
+  'Late-night Food',
+  'Karaoke',
+  'Stand-up Comedy',
+  'Events',
+  'House Parties',
+  'Road Trips',
+];
+
+String? planIssue(String value) {
+  if (value.trim().length > maxPlanTonight) {
+    return 'Keep your plan to $maxPlanTonight characters.';
+  }
+  return null;
 }
 
 DateTime? parseTimestamp(Object? value) {
@@ -114,6 +158,8 @@ class OwnAccount {
     this.notifyInvites = true,
     this.notifyMates = true,
     this.notifyNearby = false,
+    this.planTonight = '',
+    this.interests = const [],
   });
 
   final bool hasProfile;
@@ -131,6 +177,8 @@ class OwnAccount {
   final bool notifyInvites;
   final bool notifyMates;
   final bool notifyNearby;
+  final String planTonight;
+  final List<String> interests;
 
   static const empty = OwnAccount(
     hasProfile: false,

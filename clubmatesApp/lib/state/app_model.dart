@@ -31,6 +31,11 @@ export '../data/records.dart'
         heightIssue,
         interestCode,
         interestLabels,
+        interestOptions,
+        maxInterests,
+        maxPlanTonight,
+        planIssue,
+        planSuggestions,
         maxHeightCm,
         maxProfilePhotos,
         maxProfilePrompts,
@@ -176,19 +181,6 @@ const riya = Person(
 const nightPhoto = 'assets/photos/night.jpg';
 const ownPhoto = 'assets/photos/meera_alt.jpg';
 
-const nightlifeOptions = [
-  'Drinks',
-  'Clubs',
-  'Cafés',
-  'Dinner',
-  'Live Music',
-  'Rooftops',
-  'Late-night Food',
-  'Road Trips',
-  'House Parties',
-  'Events',
-];
-
 const cityOptions = ['Bengaluru', 'Mumbai', 'Delhi', 'Pune', 'Hyderabad'];
 
 const sexOptions = ['Woman', 'Man', 'Non-binary', 'Prefer not to say'];
@@ -226,7 +218,8 @@ class AppModel extends ChangeNotifier {
   String location = 'Bengaluru';
   String bio = '';
   String height = '';
-  List<String> interests = ['Drinks', 'Live Music', 'Dinner'];
+  List<String> interests = [];
+  String planTonight = '';
   String sex = 'Woman';
   String lookingFor = '';
   String? _interestedIn;
@@ -784,10 +777,46 @@ class AppModel extends ChangeNotifier {
   }
 
   void toggleInterest(String item) {
-    interests = interests.contains(item)
-        ? interests.where((interest) => interest != item).toList()
-        : [...interests, item];
+    if (interests.contains(item)) {
+      interests = interests.where((interest) => interest != item).toList();
+    } else if (interests.length < maxInterests) {
+      interests = [...interests, item];
+    }
     notifyListeners();
+  }
+
+  void setPlanTonight(String value) {
+    planTonight = value;
+    errorMessage = planIssue(value);
+    notifyListeners();
+  }
+
+  /// Saves the plan and interests on their own, from the Profile tab.
+  Future<bool> saveNightlife({
+    required String plan,
+    required List<String> picked,
+  }) async {
+    final issue = planIssue(plan);
+    if (issue != null) {
+      errorMessage = issue;
+      notifyListeners();
+      return false;
+    }
+    final previous = (planTonight, interests);
+    planTonight = plan.trim();
+    interests = picked.take(maxInterests).toList();
+    notifyListeners();
+    if (!live) return true;
+    final saved = await _guard(
+      () =>
+          _api.updateNightlife(planTonight: planTonight, interests: interests),
+    );
+    if (!saved) {
+      planTonight = previous.$1;
+      interests = previous.$2;
+      notifyListeners();
+    }
+    return saved;
   }
 
   void setSex(String value) {
@@ -848,6 +877,10 @@ class AppModel extends ChangeNotifier {
     }
     await _guard(() async {
       await _api.updateProfile(gender: code, heightCm: cm);
+      await _api.updateNightlife(
+        planTonight: planTonight,
+        interests: interests,
+      );
       _hasGender = code != null;
       go(AppRoute.photos);
     });
@@ -1459,7 +1492,8 @@ class AppModel extends ChangeNotifier {
     final cityError = cityIssue(nextCity, required: true);
     final aboutError = bioIssue(nextBio);
     final stature = heightIssue(height);
-    final issue = nameError ?? cityError ?? aboutError ?? stature;
+    final plan = planIssue(planTonight);
+    final issue = nameError ?? cityError ?? aboutError ?? stature ?? plan;
     if (issue != null) {
       errorMessage = issue;
       notifyListeners();
@@ -1485,6 +1519,11 @@ class AppModel extends ChangeNotifier {
         gender: genderCode(sex),
         heightCm: height.trim().isEmpty ? null : int.parse(height.trim()),
       );
+      await _api.updateNightlife(
+        planTonight: planTonight,
+        interests: interests,
+      );
+      planTonight = planTonight.trim();
       await _api.saveOwnPrompts(prompts);
       prompts = await _api.loadOwnPrompts();
       final chosen = interestCode(lookingFor);
@@ -1642,6 +1681,8 @@ class AppModel extends ChangeNotifier {
     }
     if (account.displayName.isNotEmpty) name = account.displayName;
     bio = account.bio;
+    planTonight = account.planTonight;
+    interests = account.interests;
     if (account.city.isNotEmpty) location = account.city;
     sex = genderLabels[account.gender] ?? sex;
     height = account.heightCm?.toString() ?? height;
@@ -1653,7 +1694,10 @@ class AppModel extends ChangeNotifier {
   }
 
   Person _card(PublicPerson person) {
-    final preview = person.bio.trim().isEmpty
+    final plan = person.planTonight.trim();
+    final preview = plan.isNotEmpty
+        ? plan
+        : person.bio.trim().isEmpty
         ? 'No plans shared yet.'
         : person.bio.trim();
     return Person(
@@ -1661,9 +1705,9 @@ class AppModel extends ChangeNotifier {
       name: person.name,
       age: person.age,
       location: person.city,
-      tonight: preview,
+      tonight: plan.isEmpty ? 'No plans shared yet.' : plan,
       usually: '',
-      interests: const [],
+      interests: person.interests,
       photo: person.photoUrl,
       preview: preview,
       verified: person.verified,
@@ -1685,6 +1729,8 @@ class AppModel extends ChangeNotifier {
     lookingFor = '';
     bio = '';
     height = '';
+    planTonight = '';
+    interests = [];
     _dob = null;
     _hasProfile = false;
     _hasPrivate = false;
