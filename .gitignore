@@ -1,0 +1,8 @@
+# macOS
+.DS_Store
+
+# Editor settings
+.vscode/
+
+# Stray Gradle output
+clubmatesApp/android/build/
