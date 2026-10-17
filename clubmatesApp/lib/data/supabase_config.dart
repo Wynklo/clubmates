@@ -1,5 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'secure_session_storage.dart';
+
 /// Development Supabase project.
 ///
 /// Pass the project URL and the publishable (anon) key at build time:
@@ -18,5 +20,8 @@ Future<void> initializeSupabaseIfConfigured() async {
   await Supabase.initialize(
     url: SupabaseConfig.url,
     publishableKey: SupabaseConfig.anonKey,
+    authOptions: FlutterAuthClientOptions(
+      localStorage: SecureSessionStorage(SupabaseConfig.url),
+    ),
   );
 }

@@ -19,6 +19,9 @@ dependencies:
   firebase_messaging: ^17.0.0
   flutter_local_notifications: ^22.3.2
   liquid_glass_widgets: ^1.13.0
+  flutter_secure_storage: ^11.2.0
+  shared_preferences: ^2.5.6
+  geocoding: ^5.0.0
 
 dev_dependencies:
   flutter_test:
