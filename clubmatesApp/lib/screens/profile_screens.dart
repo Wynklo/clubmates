@@ -6,6 +6,7 @@ import '../theme/theme.dart';
 import '../ui/club_icon.dart';
 import '../ui/height_picker.dart';
 import '../ui/liquid_glass.dart';
+import '../ui/nightlife_editor.dart';
 import '../ui/profile_prompts.dart';
 import '../ui/widgets.dart';
 
@@ -26,6 +27,10 @@ class ProfileScreen extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 18),
             child: _OutTonightCard(model),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+            child: _NightlifeCard(model),
           ),
           if (model.errorMessage != null)
             Padding(
@@ -53,7 +58,7 @@ class ProfileScreen extends StatelessWidget {
             ],
           ),
           _Section(
-            title: 'In Club',
+            title: 'Club preferences',
             children: [
               _SwitchRow(
                 icon: 'club',
@@ -79,7 +84,7 @@ class ProfileScreen extends StatelessWidget {
             ],
           ),
           _Section(
-            title: 'Safety',
+            title: 'Safety and privacy',
             children: [
               _Row(
                 icon: 'shield',
@@ -131,8 +136,10 @@ int _profileStrength(AppModel model) {
     model.name.trim().isNotEmpty,
     model.location.trim().isNotEmpty,
     model.bio.trim().isNotEmpty,
-    model.avatar.isNotEmpty,
+    model.ownPhotos.isNotEmpty || model.avatar.isNotEmpty,
+    model.planTonight.trim().isNotEmpty,
     model.interests.isNotEmpty,
+    model.prompts.isNotEmpty,
   ];
   return (checks.where((item) => item).length / checks.length * 100).round();
 }
@@ -318,6 +325,105 @@ class _OutTonightCard extends StatelessWidget {
   }
 }
 
+class _NightlifeCard extends StatelessWidget {
+  const _NightlifeCard(this.model);
+
+  final AppModel model;
+
+  @override
+  Widget build(BuildContext context) {
+    final plan = model.planTonight.trim();
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: ClubColors.field,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0x121A1A1A)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _NightlifeHeading(
+              label: 'Plan tonight',
+              onEdit: () => showNightlifeSheet(context),
+            ),
+            const SizedBox(height: 4),
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Text(
+                plan.isEmpty ? 'Add what you are up for tonight.' : plan,
+                style: plan.isEmpty
+                    ? ClubType.inter(14, color: ClubColors.muted, height: 1.4)
+                    : ClubType.lora(17, height: 1.3),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(0, 12, 8, 10),
+              child: Divider(height: 1, color: ClubColors.border),
+            ),
+            _NightlifeHeading(
+              label: 'Interests',
+              onEdit: () => showNightlifeSheet(context, interests: true),
+            ),
+            const SizedBox(height: 6),
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: model.interests.isEmpty
+                  ? Text(
+                      'Pick a few so people know your scene.',
+                      style: ClubType.inter(
+                        14,
+                        color: ClubColors.muted,
+                        height: 1.4,
+                      ),
+                    )
+                  : ChipWrap(
+                      children: [
+                        for (final item in model.interests)
+                          ChoiceChipButton(item, compact: true),
+                      ],
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NightlifeHeading extends StatelessWidget {
+  const _NightlifeHeading({required this.label, required this.onEdit});
+
+  final String label;
+  final VoidCallback onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(child: Eyebrow(label)),
+        TextButton(
+          onPressed: onEdit,
+          style: TextButton.styleFrom(
+            foregroundColor: ClubColors.brand,
+            minimumSize: const Size(44, 36),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+          ),
+          child: Text(
+            'Edit',
+            style: ClubType.inter(
+              14,
+              weight: FontWeight.w600,
+              color: ClubColors.brand,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _Pulse extends StatefulWidget {
   const _Pulse({required this.on});
 
@@ -416,13 +522,6 @@ class _Section extends StatelessWidget {
               color: ClubColors.field,
               borderRadius: BorderRadius.circular(22),
               border: Border.all(color: const Color(0x121A1A1A)),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x0F281921),
-                  blurRadius: 24,
-                  offset: Offset(0, 8),
-                ),
-              ],
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(22),
@@ -767,6 +866,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late final TextEditingController _name;
   late final TextEditingController _location;
   late final TextEditingController _bio;
+  late final TextEditingController _plan;
 
   @override
   void initState() {
@@ -775,6 +875,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _name = TextEditingController(text: model.displayName);
     _location = TextEditingController(text: model.location);
     _bio = TextEditingController(text: model.bio);
+    _plan = TextEditingController(text: model.planTonight);
   }
 
   @override
@@ -782,6 +883,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _name.dispose();
     _location.dispose();
     _bio.dispose();
+    _plan.dispose();
     super.dispose();
   }
 
@@ -789,6 +891,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Widget build(BuildContext context) {
     final model = AppScope.watch(context);
     final bottom = MediaQuery.paddingOf(context).bottom;
+    final canSave =
+        nameIssue(_name.text, required: true) == null &&
+        cityIssue(_location.text, required: true) == null &&
+        bioIssue(_bio.text) == null &&
+        heightIssue(model.height) == null &&
+        planIssue(_plan.text) == null;
     return Scaffold(
       body: Stack(
         fit: StackFit.expand,
@@ -798,105 +906,150 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             child: SafeArea(
               bottom: false,
               child: ListView(
-                padding: EdgeInsets.fromLTRB(20, 8, 20, bottom + 100),
+                padding: EdgeInsets.fromLTRB(16, 8, 16, bottom + 110),
                 children: [
                   const SizedBox(height: 44),
-                  Text('Edit profile', style: ClubType.lora(32)),
-                  const SizedBox(height: 30),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: ProfilePhoto(
-                      model.avatar,
-                      width: 110,
-                      height: 130,
-                      radius: 18,
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Edit profile', style: ClubType.lora(32)),
+                        const SizedBox(height: 6),
+                        Text(
+                          'This is what people see in Club and on your '
+                          'profile.',
+                          style: ClubType.inter(
+                            14,
+                            color: ClubColors.muted,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 28),
-                  ClubField(
-                    label: 'Name',
-                    hint: 'Aanya',
-                    controller: _name,
-                    textCapitalization: TextCapitalization.words,
-                    error: nameIssue(_name.text),
-                    onChanged: (value) {
-                      model.setName(value);
-                      setState(() {});
-                    },
+                  _EditSection(
+                    title: 'Photos',
+                    caption:
+                        'Up to 3. Your first photo is the one on your card.',
+                    child: const PhotoGrid(),
                   ),
-                  const SizedBox(height: 20),
-                  ClubField(
-                    label: 'Bio',
-                    hint: 'What are you up for tonight?',
-                    controller: _bio,
-                    maxLines: 4,
-                    error: bioIssue(_bio.text),
-                    inputFormatters: [LengthLimitingTextInputFormatter(500)],
-                    onChanged: (value) {
-                      model.setBio(value);
-                      setState(() {});
-                    },
+                  _EditSection(
+                    title: 'Plan tonight',
+                    caption: 'Shows on your card in Club.',
+                    child: PlanTonightEditor(
+                      controller: _plan,
+                      onChanged: (value) {
+                        model.setPlanTonight(value);
+                        setState(() {});
+                      },
+                    ),
                   ),
-                  const SizedBox(height: 20),
-                  ClubField(
-                    label: 'Location',
-                    hint: 'Bengaluru',
-                    controller: _location,
-                    textCapitalization: TextCapitalization.words,
-                    error: cityIssue(_location.text),
-                    onChanged: (value) {
-                      model.setLocation(value);
-                      setState(() {});
-                    },
+                  _EditSection(
+                    title: 'Interests',
+                    caption: 'Pick up to $maxInterests.',
+                    child: InterestPicker(
+                      selected: model.interests,
+                      onToggle: model.toggleInterest,
+                    ),
                   ),
-                  const SizedBox(height: 20),
-                  const Eyebrow('Height'),
-                  const SizedBox(height: 12),
-                  HeightPicker(
-                    cm: int.tryParse(model.height),
-                    onChanged: (cm) => model.setHeight('$cm'),
+                  _EditSection(
+                    title: 'Prompts',
+                    caption: 'They show between your photos on your profile.',
+                    child: PromptEditorList(
+                      prompts: model.prompts,
+                      onChanged: model.setPrompt,
+                      onRemove: model.removePrompt,
+                    ),
                   ),
-                  const SizedBox(height: 20),
-                  const Eyebrow('Sex'),
-                  const SizedBox(height: 12),
-                  ChipWrap(
-                    children: [
-                      for (final option in sexOptions)
-                        ChoiceChipButton(
-                          option,
-                          selected: model.sex == option,
-                          onPressed: () => model.setSex(option),
+                  _EditSection(
+                    title: 'About you',
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ClubField(
+                          label: 'Name',
+                          hint: 'Aanya',
+                          controller: _name,
+                          textCapitalization: TextCapitalization.words,
+                          error: nameIssue(_name.text),
+                          onChanged: (value) {
+                            model.setName(value);
+                            setState(() {});
+                          },
                         ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  const Eyebrow('Who do you want to meet?'),
-                  const SizedBox(height: 12),
-                  ChipWrap(
-                    children: [
-                      for (final option in interestLabels.values)
-                        ChoiceChipButton(
-                          option,
-                          selected: model.lookingFor == option,
-                          onPressed: () => model.setLookingFor(option),
+                        const SizedBox(height: 18),
+                        ClubField(
+                          label: 'City',
+                          hint: 'Pune',
+                          controller: _location,
+                          textCapitalization: TextCapitalization.words,
+                          error: cityIssue(_location.text),
+                          onChanged: (value) {
+                            model.setLocation(value);
+                            setState(() {});
+                          },
                         ),
-                    ],
+                        const SizedBox(height: 18),
+                        ClubField(
+                          label: 'Bio',
+                          hint: 'A line or two about you',
+                          controller: _bio,
+                          maxLines: 4,
+                          error: bioIssue(_bio.text),
+                          inputFormatters: [
+                            LengthLimitingTextInputFormatter(500),
+                          ],
+                          onChanged: (value) {
+                            model.setBio(value);
+                            setState(() {});
+                          },
+                        ),
+                        const SizedBox(height: 18),
+                        const Eyebrow('Height'),
+                        const SizedBox(height: 10),
+                        HeightPicker(
+                          cm: int.tryParse(model.height),
+                          onChanged: (cm) => model.setHeight('$cm'),
+                        ),
+                        const SizedBox(height: 18),
+                        const Eyebrow('Sex'),
+                        const SizedBox(height: 10),
+                        ChipWrap(
+                          children: [
+                            for (final option in sexOptions)
+                              ChoiceChipButton(
+                                option,
+                                selected: model.sex == option,
+                                onPressed: () => model.setSex(option),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 20),
-                  const PhotoGrid(),
-                  const SizedBox(height: 28),
-                  const Eyebrow('Prompts'),
-                  const SizedBox(height: 6),
-                  Text(
-                    'They show between your photos on your profile.',
-                    style: ClubType.inter(13, color: ClubColors.muted),
+                  _EditSection(
+                    title: 'Who you want to meet',
+                    caption: 'Only used to choose who you see in Club.',
+                    child: ChipWrap(
+                      children: [
+                        for (final option in interestLabels.values)
+                          ChoiceChipButton(
+                            option,
+                            selected: model.lookingFor == option,
+                            onPressed: () => model.setLookingFor(option),
+                          ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 12),
-                  PromptEditorList(
-                    prompts: model.prompts,
-                    onChanged: model.setPrompt,
-                    onRemove: model.removePrompt,
-                  ),
+                  if (model.errorMessage != null)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(4, 16, 4, 0),
+                      child: Text(
+                        model.errorMessage!,
+                        style: ClubType.inter(13, color: ClubColors.error),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -908,17 +1061,61 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             child: PrimaryButton(
               'Save changes',
               loading: model.busy,
-              onPressed:
-                  nameIssue(_name.text, required: true) != null ||
-                      cityIssue(_location.text, required: true) != null ||
-                      bioIssue(_bio.text) != null ||
-                      heightIssue(model.height) != null
+              onPressed: !canSave
                   ? null
                   : () => model.saveEdits(
                       nextName: _name.text,
                       nextBio: _bio.text,
                       nextCity: _location.text,
                     ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EditSection extends StatelessWidget {
+  const _EditSection({required this.title, required this.child, this.caption});
+
+  final String title;
+  final String? caption;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 28),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: ClubType.lora(21, height: 1.15)),
+                if (caption != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    caption!,
+                    style: ClubType.inter(13, color: ClubColors.muted),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: ClubColors.field,
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: const Color(0x121A1A1A)),
+              ),
+              child: Padding(padding: const EdgeInsets.all(16), child: child),
             ),
           ),
         ],
