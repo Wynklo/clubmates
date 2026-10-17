@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'clubs.dart';
 import 'records.dart';
 
 enum SendState { sending, sent, failed }
@@ -100,7 +101,10 @@ class MateThread {
     final text = switch (lastKind) {
       'photo' => 'Photo',
       'removed' => 'Message removed',
-      'text' => lastBody?.replaceAll('\n', ' '),
+      'text' => switch (lastBody) {
+        final body? => readableMessage(body).replaceAll('\n', ' '),
+        null => null,
+      },
       _ => null,
     };
     if (text == null) return null;

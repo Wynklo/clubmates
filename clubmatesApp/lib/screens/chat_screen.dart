@@ -2,7 +2,9 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../data/clubs.dart';
 import '../state/app_model.dart';
 import '../theme/theme.dart';
 import '../ui/club_icon.dart';
@@ -62,6 +64,11 @@ class _MateChatScreenState extends State<MateChatScreen> {
     setState(() => _plansOpen = false);
     chat.send(text);
     _toBottom();
+  }
+
+  Future<void> _sendClub(ChatController chat) async {
+    setState(() => _plansOpen = false);
+    if (await pickAndSendClub(context, chat)) _toBottom();
   }
 
   void _toBottom() {
@@ -143,10 +150,7 @@ class _MateChatScreenState extends State<MateChatScreen> {
                   left: 12,
                   right: 12,
                   child: _PlanMenu(
-                    onClubs: () => _sendPlan(
-                      chat,
-                      'Want to check out a club together tonight?',
-                    ),
+                    onClubs: () => _sendClub(chat),
                     onDrinks: () =>
                         _sendPlan(chat, 'Up for drinks nearby tonight?'),
                   ),
@@ -428,6 +432,13 @@ class _Bubble extends StatelessWidget {
 
     final textColor = mine ? ClubColors.paper : ClubColors.ink;
     final body = message.body;
+    final club = clubFromMessage(body);
+    if (club != null) {
+      return ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxWidth),
+        child: _ClubCard(club: club, radius: radius, time: time, chat: chat),
+      );
+    }
     return ConstrainedBox(
       constraints: BoxConstraints(maxWidth: maxWidth),
       child: DecoratedBox(
@@ -484,6 +495,452 @@ class _Bubble extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ClubCard extends StatelessWidget {
+  const _ClubCard({
+    required this.club,
+    required this.radius,
+    required this.time,
+    required this.chat,
+  });
+
+  final Club club;
+  final BorderRadius radius;
+  final String time;
+  final ChatController chat;
+
+  Future<void> _openMaps(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final opened = await launchUrl(
+      club.mapsUrl,
+      mode: LaunchMode.externalApplication,
+    );
+    if (!opened) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Could not open Maps.')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const divider = Padding(
+      padding: EdgeInsets.symmetric(vertical: 12),
+      child: Divider(height: 1, thickness: 1, color: Color(0x141A1A1A)),
+    );
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+      decoration: BoxDecoration(color: ClubColors.field, borderRadius: radius),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5ECF7),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const SizedBox.square(
+                  dimension: 36,
+                  child: Center(
+                    child: ClubIcon('club', size: 18, color: ClubColors.brand),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(child: Eyebrow('Club plan')),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(club.name, style: ClubType.lora(21, height: 1.15)),
+          const SizedBox(height: 4),
+          Text(
+            club.area,
+            style: ClubType.inter(
+              13,
+              weight: FontWeight.w600,
+              color: ClubColors.brand,
+            ),
+          ),
+          divider,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(top: 1),
+                child: ClubIcon('location', size: 16, color: ClubColors.muted),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  club.address,
+                  style: ClubType.inter(13, height: 1.4, color: ClubColors.ink),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: Material(
+              color: ClubColors.brand,
+              borderRadius: BorderRadius.circular(999),
+              child: InkWell(
+                onTap: () => _openMaps(context),
+                borderRadius: BorderRadius.circular(999),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 11),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const ClubIcon('location', size: 16, color: Colors.white),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Open in Maps',
+                        style: ClubType.inter(
+                          14,
+                          weight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          divider,
+          Row(
+            children: [
+              const ClubIcon('shield', size: 16, color: ClubColors.brand),
+              const SizedBox(width: 8),
+              Text(
+                'Before you go',
+                style: ClubType.inter(13, weight: FontWeight.w700),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          for (final tip in clubTips)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6, right: 8),
+                    child: Container(
+                      width: 4,
+                      height: 4,
+                      decoration: const BoxDecoration(
+                        color: ClubColors.brand,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      tip,
+                      style: ClubType.inter(
+                        12,
+                        height: 1.4,
+                        color: ClubColors.muted,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 2),
+          Row(
+            children: [
+              TextButton(
+                onPressed: () => pickAndSendClub(context, chat),
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(0, 36),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  foregroundColor: ClubColors.brand,
+                ),
+                child: Text(
+                  'Pick another club',
+                  style: ClubType.inter(
+                    13,
+                    weight: FontWeight.w600,
+                    color: ClubColors.brand,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              Text(time, style: ClubType.inter(10, color: ClubColors.muted)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Lets either mate pick a club; the pick is sent to the chat for both.
+Future<bool> pickAndSendClub(BuildContext context, ChatController chat) async {
+  final club = await showModalBottomSheet<Club>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: ClubColors.paper,
+    showDragHandle: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+    ),
+    builder: (context) => const _ClubPicker(),
+  );
+  if (club == null) return false;
+  HapticFeedback.selectionClick();
+  chat.send(clubMessage(club));
+  return true;
+}
+
+class _ClubPicker extends StatefulWidget {
+  const _ClubPicker();
+
+  @override
+  State<_ClubPicker> createState() => _ClubPickerState();
+}
+
+class _ClubPickerState extends State<_ClubPicker> {
+  String? _area;
+
+  @override
+  Widget build(BuildContext context) {
+    final areas = <String, List<Club>>{};
+    for (final club in puneClubs) {
+      areas.putIfAbsent(club.area, () => []).add(club);
+    }
+    final shown = _area == null
+        ? areas.entries.toList()
+        : areas.entries.where((e) => e.key == _area).toList();
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.88,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Pick a club', style: ClubType.lora(28, height: 1.1)),
+                const SizedBox(height: 6),
+                Text(
+                  'Choose an area, then a club. You both get the address, '
+                  'a map link and safety tips.',
+                  style: ClubType.inter(
+                    14,
+                    color: ClubColors.ink.withValues(alpha: 0.72),
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(
+            height: 56,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
+              children: [
+                _AreaChip(
+                  label: 'All areas',
+                  selected: _area == null,
+                  onTap: () => setState(() => _area = null),
+                ),
+                for (final area in areas.keys)
+                  _AreaChip(
+                    label: area,
+                    selected: _area == area,
+                    onTap: () => setState(() => _area = area),
+                  ),
+              ],
+            ),
+          ),
+          const Divider(height: 1, thickness: 1, color: Color(0x141A1A1A)),
+          Flexible(
+            child: ListView(
+              shrinkWrap: true,
+              padding: EdgeInsets.fromLTRB(
+                16,
+                4,
+                16,
+                MediaQuery.paddingOf(context).bottom + 16,
+              ),
+              children: [
+                for (final entry in shown) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(4, 18, 4, 10),
+                    child: Row(
+                      children: [
+                        const ClubIcon(
+                          'location',
+                          size: 18,
+                          color: ClubColors.brand,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            entry.key,
+                            style: ClubType.inter(
+                              17,
+                              weight: FontWeight.w700,
+                              height: 1.2,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          entry.value.length == 1
+                              ? '1 club'
+                              : '${entry.value.length} clubs',
+                          style: ClubType.inter(
+                            13,
+                            color: ClubColors.ink.withValues(alpha: 0.6),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  for (final club in entry.value)
+                    _ClubOption(
+                      club: club,
+                      onTap: () => Navigator.pop(context, club),
+                    ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AreaChip extends StatelessWidget {
+  const _AreaChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: Material(
+        color: selected ? ClubColors.brand : ClubColors.field,
+        shape: StadiumBorder(
+          side: BorderSide(
+            color: selected ? ClubColors.brand : const Color(0x261A1A1A),
+          ),
+        ),
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const StadiumBorder(),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Center(
+              child: Text(
+                label,
+                style: ClubType.inter(
+                  14,
+                  weight: FontWeight.w600,
+                  color: selected ? Colors.white : ClubColors.ink,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ClubOption extends StatelessWidget {
+  const _ClubOption({required this.club, required this.onTap});
+
+  final Club club;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: ClubColors.field,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        club.name,
+                        style: ClubType.inter(
+                          16,
+                          weight: FontWeight.w600,
+                          height: 1.25,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        club.address,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: ClubType.inter(
+                          13,
+                          height: 1.4,
+                          color: ClubColors.ink.withValues(alpha: 0.68),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Color(0xFFF5ECF7),
+                    shape: BoxShape.circle,
+                  ),
+                  child: SizedBox.square(
+                    dimension: 36,
+                    child: Center(
+                      child: ClubIcon(
+                        'send',
+                        size: 16,
+                        color: ClubColors.brand,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -850,7 +1307,7 @@ class _PlanMenu extends StatelessWidget {
             _PlanRow(
               index: '01',
               title: 'Check out a club together',
-              subtitle: 'Sends: Want to check out a club together tonight?',
+              subtitle: 'Pick a club and send its address, map and tips.',
               onPressed: onClubs,
             ),
             _PlanRow(
@@ -1217,7 +1674,14 @@ void _showMessageActions(
         icon: 'copy',
         label: 'Copy',
         onPressed: () {
-          Clipboard.setData(ClipboardData(text: body));
+          final club = clubFromMessage(body);
+          Clipboard.setData(
+            ClipboardData(
+              text: club == null
+                  ? body
+                  : '${club.name}, ${club.area}\n${club.address}\n${club.mapsUrl}',
+            ),
+          );
           Navigator.pop(context);
         },
       ),
