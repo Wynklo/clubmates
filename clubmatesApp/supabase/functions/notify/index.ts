@@ -1,12 +1,13 @@
-// Sends invite pushes through Firebase Cloud Messaging.
+// Sends invite and mate message pushes through Firebase Cloud Messaging.
 //
-// Called only by the invites trigger (pg_net) with the shared secret from
-// Vault. The payload names an invite; everything else is read here, so a
-// caller cannot choose who gets a push or what it says.
+// Called only by the invites and mate_messages triggers (pg_net) with the
+// shared secret from Vault. The payload names an invite or a message;
+// everything else is read here, so a caller cannot choose who gets a push
+// or what it says.
 //
 // Push text never contains phone numbers, locations, or chat text.
 
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { importPKCS8, SignJWT } from "npm:jose@5";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
@@ -77,13 +78,21 @@ Deno.serve(async (request) => {
     return reply(503, { error: "Push is not configured" });
   }
 
-  const { kind, invite_id: inviteId } = await request.json().catch(() => ({}));
-  if (kind !== "invite" && kind !== "accepted") return reply(400, { error: "kind" });
-  if (typeof inviteId !== "string") return reply(400, { error: "invite_id" });
-
+  const payload = await request.json().catch(() => ({}));
   const db = createClient(supabaseUrl, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+
+  if (payload.kind === "message") {
+    if (typeof payload.message_id !== "string") return reply(400, { error: "message_id" });
+    const push = await messagePush(db, payload.message_id);
+    if ("reason" in push) return reply(200, { sent: 0, reason: push.reason });
+    return reply(200, { sent: await sendToUser(db, push.target, push) });
+  }
+
+  const { kind, invite_id: inviteId } = payload;
+  if (kind !== "invite" && kind !== "accepted") return reply(400, { error: "kind" });
+  if (typeof inviteId !== "string") return reply(400, { error: "invite_id" });
 
   const { data: invite } = await db
     .from("invites")
@@ -120,11 +129,89 @@ Deno.serve(async (request) => {
     route = "mates";
   }
 
+  return reply(200, { sent: await sendToUser(db, target, { title, body, data: { route } }) });
+});
+
+type Push = {
+  title: string;
+  body: string;
+  data: Record<string, string>;
+  // Later pushes with the same tag replace the earlier one on the phone.
+  tag?: string;
+};
+
+// Message pushes name the sender but never include the message text.
+async function messagePush(
+  db: SupabaseClient,
+  messageId: string,
+): Promise<(Push & { target: string }) | { reason: string }> {
+  const { data: message } = await db
+    .from("mate_messages")
+    .select("id, mate_id, sender_id, image_path, deleted_at, read_at, created_at")
+    .eq("id", messageId)
+    .maybeSingle();
+  if (!message || message.deleted_at || message.read_at) return { reason: "stale" };
+
+  const { data: mate } = await db
+    .from("mates")
+    .select("user_one_id, user_two_id, status")
+    .eq("id", message.mate_id)
+    .maybeSingle();
+  if (!mate || mate.status !== "ACTIVE") return { reason: "closed" };
+  const target = mate.user_one_id === message.sender_id ? mate.user_two_id : mate.user_one_id;
+
+  const { count: blocks } = await db
+    .from("user_blocks")
+    .select("blocker_id", { count: "exact", head: true })
+    .or(
+      `and(blocker_id.eq.${target},blocked_id.eq.${message.sender_id}),` +
+        `and(blocker_id.eq.${message.sender_id},blocked_id.eq.${target})`,
+    );
+  if (blocks) return { reason: "blocked" };
+
+  const { data: prefs } = await db
+    .from("user_private")
+    .select("notify_mates")
+    .eq("user_id", target)
+    .maybeSingle();
+  if (prefs && prefs.notify_mates === false) return { reason: "switched off" };
+
+  // One push per burst: skip if an earlier unread message from the same
+  // sender in this thread arrived in the last two minutes.
+  const since = new Date(new Date(message.created_at).getTime() - 120_000).toISOString();
+  const { count: earlier } = await db
+    .from("mate_messages")
+    .select("id", { count: "exact", head: true })
+    .eq("mate_id", message.mate_id)
+    .eq("sender_id", message.sender_id)
+    .is("read_at", null)
+    .is("deleted_at", null)
+    .neq("id", message.id)
+    .gte("created_at", since)
+    .lte("created_at", message.created_at);
+  if (earlier) return { reason: "burst" };
+
+  const { data: sender } = await db
+    .from("profiles")
+    .select("display_name")
+    .eq("id", message.sender_id)
+    .maybeSingle();
+  const first = (sender?.display_name ?? "").trim().split(/\s+/)[0] || "Your mate";
+  return {
+    target,
+    title: first,
+    body: message.image_path ? "Sent you a photo." : "Sent you a message.",
+    data: { route: "chat", mate_id: message.mate_id },
+    tag: `chat-${message.mate_id}`,
+  };
+}
+
+async function sendToUser(db: SupabaseClient, target: string, push: Push): Promise<number> {
   const { data: tokens } = await db
     .from("device_tokens")
     .select("token")
     .eq("user_id", target);
-  if (!tokens?.length) return reply(200, { sent: 0, reason: "no devices" });
+  if (!tokens?.length) return 0;
 
   const accessToken = await googleAccessToken();
   let sent = 0;
@@ -140,9 +227,15 @@ Deno.serve(async (request) => {
         body: JSON.stringify({
           message: {
             token,
-            notification: { title, body },
-            data: { route },
-            android: { priority: "HIGH" },
+            notification: { title: push.title, body: push.body },
+            data: push.data,
+            android: {
+              priority: "HIGH",
+              ...(push.tag ? { notification: { tag: push.tag } } : {}),
+            },
+            ...(push.tag
+              ? { apns: { headers: { "apns-collapse-id": push.tag } } }
+              : {}),
           },
         }),
       },
@@ -160,6 +253,5 @@ Deno.serve(async (request) => {
       await db.from("device_tokens").delete().eq("token", token);
     }
   }
-
-  return reply(200, { sent });
-});
+  return sent;
+}
