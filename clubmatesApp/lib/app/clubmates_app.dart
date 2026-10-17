@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
+import '../screens/chat_screen.dart';
 import '../screens/discover_screen.dart';
 import '../screens/onboarding_screens.dart';
 import '../screens/people_screens.dart';
@@ -51,8 +53,10 @@ class _ClubmatesAppState extends State<ClubmatesApp> {
               AppRoute.profile => AppTab.profile,
               _ => null,
             };
-            if (tab == null) return screen;
-            return TabChrome(tab: tab, child: screen);
+            return AnnotatedRegion<SystemUiOverlayStyle>(
+              value: SystemUiOverlayStyle.dark,
+              child: tab == null ? screen : TabChrome(tab: tab, child: screen),
+            );
           },
         ),
       ),
@@ -71,7 +75,7 @@ class _ClubmatesAppState extends State<ClubmatesApp> {
       AppRoute.nightlife => const NightlifeScreen(),
       AppRoute.about => const AboutScreen(),
       AppRoute.photos => const PhotosScreen(),
-      AppRoute.identity => const IdentityScreen(),
+      AppRoute.prompts => const PromptsScreen(),
       AppRoute.face => const FaceScreen(),
       AppRoute.verified => const VerifiedScreen(),
       AppRoute.club => const ClubScreen(),

@@ -39,12 +39,16 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>NSCameraUsageDescription</key>
-	<string>Clubmates uses the camera so you can add a profile photo.</string>
+	<string>Clubmates uses the camera so you can add a profile photo or send a photo to a mate.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Clubmates uses your location to show people in the same area. Searches beyond 10 km are paid.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Clubmates uses your photos so you can add a profile photo.</string>
+	<string>Clubmates uses your photos so you can add a profile photo or send a photo to a mate.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

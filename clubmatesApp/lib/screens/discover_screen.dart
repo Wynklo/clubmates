@@ -73,7 +73,7 @@ class _ClubScreenState extends State<ClubScreen> {
         padding: EdgeInsets.only(bottom: ClubChrome.clearance(context)),
         children: [
           const Padding(
-            padding: EdgeInsets.fromLTRB(16, 6, 12, 10),
+            padding: EdgeInsets.fromLTRB(16, 0, 16, 10),
             child: _ClubHeader(),
           ),
           if (model.errorMessage != null)
@@ -331,7 +331,6 @@ class _ClubHeader extends StatelessWidget {
               child: GlassIconButton(
                 icon: 'tune',
                 tooltip: 'Discovery preferences',
-                size: 40,
                 onPressed: () => model.openNearby(back: AppRoute.club),
               ),
             ),

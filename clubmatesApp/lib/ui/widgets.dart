@@ -330,6 +330,7 @@ class ClubField extends StatelessWidget {
     this.error,
     this.textAlign = TextAlign.start,
     this.autofocus = false,
+    this.textCapitalization = TextCapitalization.sentences,
   });
 
   final String? label;
@@ -344,6 +345,7 @@ class ClubField extends StatelessWidget {
   final String? error;
   final TextAlign textAlign;
   final bool autofocus;
+  final TextCapitalization textCapitalization;
 
   @override
   Widget build(BuildContext context) {
@@ -366,6 +368,7 @@ class ClubField extends StatelessWidget {
           inputFormatters: inputFormatters,
           maxLines: maxLines,
           textAlign: textAlign,
+          textCapitalization: textCapitalization,
           style: ClubType.inter(16, height: 1.3),
           cursorColor: ClubColors.brand,
           decoration: InputDecoration(
@@ -955,8 +958,8 @@ class PinnedBackPage extends StatefulWidget {
     super.key,
     required this.onBack,
     required this.child,
-    this.left = 20,
-    this.top = 8,
+    this.left = 16,
+    this.top = 0,
     this.fadeAfter = 4,
     this.clearUntilFade = false,
   });
@@ -1107,6 +1110,7 @@ class BottomNav extends StatelessWidget {
     final selected = _tabs.indexWhere((item) => item.$1 == model.tab);
     int badgeFor(AppTab tab) => switch (tab) {
       AppTab.invites => model.incoming.length,
+      AppTab.mates => model.unreadMessages,
       _ => 0,
     };
     return SizedBox(
